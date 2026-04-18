@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Campaign, TopicWithEvals, Comment, AiEvaluation } from '@/types'
+import InspirationUploader from './InspirationUploader'
 
 const GRADIENTS = [
   'from-emerald-500 to-teal-600',
@@ -966,6 +967,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
             >
               {feedView ? '🗂️' : '📱'}
             </button>
+            <InspirationUploader campaignId={campaign.id} />
             <button
               onClick={handleShare}
               title="分享此链接"

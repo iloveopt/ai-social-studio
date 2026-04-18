@@ -82,3 +82,21 @@ export interface Comment {
 export interface TopicWithEvals extends Topic {
   ai_evaluations: AiEvaluation[]
 }
+
+export interface InspirationSuggestion {
+  title: string
+  hook: string
+  why: string
+  format: string
+}
+
+export interface Inspiration {
+  id: string
+  created_at: string
+  campaign_id: string
+  image_url: string | null
+  image_base64: string | null
+  analysis: string | null
+  suggestions: InspirationSuggestion[]
+  status: "pending" | "done" | "error"
+}

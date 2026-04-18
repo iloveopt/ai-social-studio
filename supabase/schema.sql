@@ -63,6 +63,22 @@ create table if not exists comments (
   deleted_at timestamptz
 );
 
+-- ─── inspirations ───
+create table if not exists inspirations (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamptz default now() not null,
+  campaign_id uuid references campaigns(id) on delete cascade not null,
+  image_url text,
+  image_base64 text,
+  analysis text,
+  suggestions jsonb default '[]',
+  status text not null default 'pending' check (status in ('pending','done','error'))
+);
+alter table inspirations enable row level security;
+create policy "public read inspirations" on inspirations for select using (true);
+create policy "auth insert inspirations" on inspirations for insert with check (true);
+create policy "auth update inspirations" on inspirations for update using (true);
+
 -- ─── RLS Policies ───
 -- For demo: allow all reads, restrict writes to authenticated or anon with service key
 alter table campaigns enable row level security;
