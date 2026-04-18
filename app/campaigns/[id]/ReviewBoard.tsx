@@ -33,49 +33,98 @@ interface Props {
   initialTopics: TopicWithEvals[]
 }
 
-function ScoreBadge({ score }: { score: number | null }) {
-  if (score === null) return null
-  const color = score >= 4 ? 'text-brand-green' : score >= 3 ? 'text-brand-yellow' : 'text-red-500'
-  return <span className={`text-4xl font-black tabular-nums ${color}`}>{score.toFixed(1)}</span>
+const STATUS_LABELS: Record<string, string> = {
+  pending: '待评审',
+  approved: '已通过',
+  discussing: '讨论中',
+  rejected: '已拒绝',
 }
 
-function StatusBadge({ status }: { status: string }) {
+function scoreColor(score: number) {
+  if (score >= 4) return 'text-brand-green'
+  if (score >= 3) return 'text-brand-yellow'
+  return 'text-red-500'
+}
+
+function scoreBar(score: number) {
+  if (score >= 4) return 'bg-brand-green'
+  if (score >= 3) return 'bg-brand-yellow'
+  return 'bg-red-500'
+}
+
+function CoverScore({ score }: { score: number | null }) {
+  if (score === null) return null
+  return (
+    <div className="flex items-baseline gap-0.5 text-white drop-shadow">
+      <span className="text-4xl font-black leading-none tabular-nums">{score.toFixed(1)}</span>
+      <span className="text-xs font-medium opacity-80">分</span>
+    </div>
+  )
+}
+
+function CoverStatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    pending: 'bg-gray-100 text-gray-500',
-    approved: 'bg-green-100 text-brand-green',
-    discussing: 'bg-yellow-100 text-brand-yellow',
-    rejected: 'bg-red-100 text-red-500',
-  }
-  const labels: Record<string, string> = {
-    pending: '待评审',
-    approved: '已通过',
-    discussing: '讨论中',
-    rejected: '已拒绝',
+    pending: 'bg-white/85 text-gray-600',
+    approved: 'bg-brand-green text-white',
+    discussing: 'bg-brand-yellow text-white',
+    rejected: 'bg-red-500 text-white',
   }
   return (
-    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${styles[status] ?? styles.pending}`}>
-      {labels[status] ?? status}
+    <span className={`text-[11px] px-2.5 py-1 rounded-full font-semibold backdrop-blur-sm ${styles[status] ?? styles.pending}`}>
+      {STATUS_LABELS[status] ?? status}
     </span>
   )
 }
 
-function EvalCard({ ev }: { ev: AiEvaluation }) {
-  const color = ev.score >= 4 ? 'text-brand-green' : ev.score >= 3 ? 'text-brand-yellow' : 'text-red-500'
+function TagChip({ label, color }: { label: string; color: string }) {
   return (
-    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-      <span className="text-xl flex-shrink-0">{ev.emoji ?? '👤'}</span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-semibold text-gray-900">{ev.persona_name}</span>
-          <span className={`text-sm font-bold ${color}`}>{ev.score.toFixed(1)}</span>
+    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${color}`}>
+      {label}
+    </span>
+  )
+}
+
+const TAG_COLORS = [
+  'bg-emerald-50 text-emerald-700',
+  'bg-violet-50 text-violet-700',
+  'bg-rose-50 text-rose-700',
+  'bg-blue-50 text-blue-700',
+  'bg-amber-50 text-amber-700',
+  'bg-pink-50 text-pink-700',
+]
+
+function topicTagChips(topic: TopicWithEvals): string[] {
+  const fromHandoff = (topic.handoff ?? [])
+    .map((h) => h.tag)
+    .filter((t): t is string => !!t && typeof t === 'string')
+  const unique = Array.from(new Set(fromHandoff))
+  return unique.slice(0, 4)
+}
+
+function EvalCard({ ev }: { ev: AiEvaluation }) {
+  const color = scoreColor(ev.score)
+  const bar = scoreBar(ev.score)
+  const pct = Math.max(0, Math.min(100, (ev.score / 5) * 100))
+  return (
+    <div className="p-3 bg-gray-50 rounded-xl">
+      <div className="flex items-start gap-3">
+        <span className="text-xl flex-shrink-0">{ev.emoji ?? '👤'}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold text-gray-900">{ev.persona_name}</span>
+            <span className={`text-sm font-bold tabular-nums ${color}`}>{ev.score.toFixed(1)}</span>
+          </div>
+          {ev.persona_desc && <p className="text-xs text-gray-400 mt-0.5">{ev.persona_desc}</p>}
+          <p className="text-sm text-gray-700 mt-1.5 italic">&ldquo;{ev.quote}&rdquo;</p>
+          {ev.verdict && (
+            <span className="inline-block mt-1.5 text-xs px-2 py-0.5 bg-white border border-gray-200 rounded-full text-gray-600">
+              {ev.verdict}
+            </span>
+          )}
         </div>
-        {ev.persona_desc && <p className="text-xs text-gray-400 mt-0.5">{ev.persona_desc}</p>}
-        <p className="text-sm text-gray-700 mt-1.5 italic">"{ev.quote}"</p>
-        {ev.verdict && (
-          <span className="inline-block mt-1.5 text-xs px-2 py-0.5 bg-white border border-gray-200 rounded-full text-gray-600">
-            {ev.verdict}
-          </span>
-        )}
+      </div>
+      <div className="mt-2.5 h-1 bg-gray-200 rounded-full overflow-hidden">
+        <div className={`h-full ${bar} rounded-full transition-all`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   )
@@ -235,21 +284,45 @@ function DetailSheet({
         <div className="flex-1 overflow-y-auto p-4">
           {tab === 'thinking' && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-700 leading-relaxed">{topic.thinking ?? '暂无'}</p>
+              {topic.thinking ? (
+                <blockquote className="text-sm text-gray-700 leading-relaxed pl-4 border-l-4 border-brand-green bg-brand-green/5 py-3 pr-3 rounded-r-lg whitespace-pre-line">
+                  {topic.thinking}
+                </blockquote>
+              ) : (
+                <p className="text-sm text-gray-400">暂无</p>
+              )}
             </div>
           )}
 
           {tab === 'ai-score' && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-sm text-gray-500">综合评分</span>
-                {topic.ai_avg_score !== null && (
-                  <span className="text-2xl font-black text-brand-green">{topic.ai_avg_score.toFixed(1)}</span>
-                )}
+            <div className="space-y-4">
+              {topic.ai_avg_score !== null && (
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-100">
+                  <div className="flex items-end justify-between mb-2">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">综合评分</p>
+                      <div className="flex items-baseline gap-1">
+                        <span className={`text-4xl font-black tabular-nums ${scoreColor(topic.ai_avg_score)}`}>
+                          {topic.ai_avg_score.toFixed(1)}
+                        </span>
+                        <span className="text-sm text-gray-400 font-medium">/ 5.0</span>
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-400">{topic.ai_evaluations.length} 位评委</span>
+                  </div>
+                  <div className="h-2 bg-white rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${scoreBar(topic.ai_avg_score)} rounded-full transition-all`}
+                      style={{ width: `${(topic.ai_avg_score / 5) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="space-y-3">
+                {topic.ai_evaluations.map((ev) => (
+                  <EvalCard key={ev.id} ev={ev} />
+                ))}
               </div>
-              {topic.ai_evaluations.map((ev) => (
-                <EvalCard key={ev.id} ev={ev} />
-              ))}
             </div>
           )}
 
@@ -717,52 +790,95 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
     }
   }
 
+  const counts = useMemo(() => {
+    const init = { approved: 0, discussing: 0, pending: 0, rejected: 0 }
+    for (const t of topics) {
+      if (t.status in init) init[t.status as keyof typeof init]++
+    }
+    return init
+  }, [topics])
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
-        <div className="max-w-lg mx-auto flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs text-gray-400">Campaign</p>
-            <h1 className="text-sm font-bold text-gray-900 truncate">
-              {campaign.brand_name} × {campaign.ip_name}
-            </h1>
+      <header className="bg-white border-b border-gray-200 flex-shrink-0">
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="min-w-0 flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-green to-emerald-600 flex items-center justify-center text-white font-black text-sm flex-shrink-0">
+              S
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                <span className="font-semibold text-gray-500">AI Social Studio</span>
+                <span className="w-0.5 h-0.5 rounded-full bg-gray-300" />
+                <span className="truncate">Campaign</span>
+              </div>
+              <h1 className="text-sm font-bold text-gray-900 truncate leading-tight">
+                {campaign.brand_name} × {campaign.ip_name}
+              </h1>
+            </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={handleShare}
-            title="分享此链接"
-            className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-            aria-label="分享"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-          </button>
-          <button
-            onClick={handleGenerate}
-            disabled={generating}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-green text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
-          >
-            {generating ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                生成中...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                {topics.length > 0 ? '重新生成' : '生成选题'}
-              </>
-            )}
-          </button>
+            <button
+              onClick={handleShare}
+              title="分享此链接"
+              className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+              aria-label="分享"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </button>
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand-green text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
+            >
+              {generating ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  生成中
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  {topics.length > 0 ? '重新生成' : '生成选题'}
+                </>
+              )}
+            </button>
           </div>
         </div>
+        {topics.length > 0 && (
+          <div className="bg-gray-50 border-t border-gray-100">
+            <div className="max-w-lg mx-auto px-4 py-2 flex items-center justify-between text-[12px]">
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-green" />
+                  <span className="text-gray-500">已通过</span>
+                  <span className="font-bold text-brand-green tabular-nums">{counts.approved}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-yellow" />
+                  <span className="text-gray-500">讨论中</span>
+                  <span className="font-bold text-brand-yellow tabular-nums">{counts.discussing}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                  <span className="text-gray-500">待审核</span>
+                  <span className="font-bold text-gray-500 tabular-nums">{counts.pending}</span>
+                </span>
+              </div>
+              <span className="text-gray-400">
+                总计 <span className="font-bold text-gray-700 tabular-nums">{topics.length}</span>
+              </span>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main */}
@@ -805,57 +921,102 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                 onTouchEnd={handleTouchEnd}
               >
                 {/* Gradient cover */}
-                <div className={`h-32 bg-gradient-to-br ${GRADIENTS[current % GRADIENTS.length]} flex items-end p-4`}>
-                  <div className="flex items-end justify-between w-full">
-                    <span className="text-white/60 text-5xl font-black leading-none">
+                <div className={`relative h-36 bg-gradient-to-br ${GRADIENTS[current % GRADIENTS.length]} p-4`}>
+                  <div className="absolute top-3 right-3">
+                    <CoverStatusBadge status={topic.status} />
+                  </div>
+                  <div className="absolute bottom-3 left-4">
+                    <span className="text-white/55 text-5xl font-black leading-none tracking-tight">
                       #{String(topic.seq_num).padStart(2, '0')}
                     </span>
-                    <ScoreBadge score={topic.ai_avg_score} />
+                  </div>
+                  <div className="absolute bottom-3 right-4">
+                    <CoverScore score={topic.ai_avg_score} />
                   </div>
                 </div>
 
                 {/* Content */}
                 <div className="p-4 space-y-3">
-                  <div className="flex items-start gap-2">
-                    <h2 className="text-base font-bold text-gray-900 flex-1 leading-snug">{topic.title}</h2>
-                    <StatusBadge status={topic.status} />
-                  </div>
-                  <p className="text-sm text-gray-500 leading-relaxed">{topic.hook}</p>
-
-                  {/* Action buttons */}
-                  <div className="flex gap-2 pt-1">
-                    {STATUS_ACTIONS.map((action) => (
-                      <button
-                        key={action.status}
-                        onClick={() => updateStatus(topic.id, action.status)}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${action.color} ${
-                          topic.status === action.status ? 'ring-2 ring-offset-1 ring-current opacity-100' : ''
-                        }`}
-                      >
-                        {action.label}
-                      </button>
-                    ))}
+                  <div>
+                    <h2 className="text-[17px] font-bold text-gray-900 leading-snug">{topic.title}</h2>
+                    <p className="text-sm text-gray-500 leading-relaxed mt-1.5 line-clamp-2">{topic.hook}</p>
                   </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setSheetTopic(topic)}
-                      className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-                    >
-                      查看详情
-                    </button>
+                  {(() => {
+                    const tags = topicTagChips(topic)
+                    if (tags.length === 0) return null
+                    return (
+                      <div className="flex flex-wrap gap-1.5">
+                        {tags.map((t, i) => (
+                          <TagChip key={i} label={t} color={TAG_COLORS[i % TAG_COLORS.length]} />
+                        ))}
+                      </div>
+                    )
+                  })()}
+
+                  {topic.persona && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-gray-500 flex-wrap">
+                      {topic.persona.primary && (
+                        <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                          {topic.persona.primary}
+                        </span>
+                      )}
+                      {topic.persona.primary && topic.persona.platform && <span className="text-gray-300">→</span>}
+                      {topic.persona.platform && (
+                        <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                          {topic.persona.platform}
+                        </span>
+                      )}
+                      {topic.persona.platform && topic.persona.cta && <span className="text-gray-300">→</span>}
+                      {topic.persona.cta && (
+                        <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                          {topic.persona.cta}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Action rows */}
+                  <div className="pt-1 space-y-2">
+                    {/* Row 1: preview (full-width secondary) */}
                     <button
                       onClick={() => {
                         setPreviewGradient(GRADIENTS[current % GRADIENTS.length])
                         setPreviewTopic(topic)
                       }}
-                      className="flex-1 py-2 rounded-lg bg-gradient-to-r from-red-500 to-pink-500 text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-1"
+                      className="w-full py-2.5 rounded-lg border border-red-200 bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition flex items-center justify-center gap-1.5"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
-                      出街预览
+                      出街预览（小红书样式）
+                    </button>
+
+                    {/* Row 2: 3 status buttons */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {STATUS_ACTIONS.map((action) => {
+                        const active = topic.status === action.status
+                        return (
+                          <button
+                            key={action.status}
+                            onClick={() => updateStatus(topic.id, action.status)}
+                            className={`py-2 rounded-lg text-sm font-medium transition ${action.color} ${
+                              active ? 'ring-2 ring-offset-1 ring-current font-bold' : 'opacity-80 hover:opacity-100'
+                            }`}
+                          >
+                            {action.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Row 3: detail */}
+                    <button
+                      onClick={() => setSheetTopic(topic)}
+                      className="w-full py-2.5 rounded-lg border border-gray-300 text-sm text-gray-700 font-medium hover:bg-gray-50 transition"
+                    >
+                      查看详情 →
                     </button>
                   </div>
                 </div>
