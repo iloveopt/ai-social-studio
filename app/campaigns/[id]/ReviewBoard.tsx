@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { use } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Campaign, TopicWithEvals, Comment, AiEvaluation } from '@/types'
 
@@ -322,12 +321,333 @@ function DetailSheet({
   )
 }
 
+function XhsPreviewModal({
+  topic,
+  campaign,
+  gradient,
+  onClose,
+  onApprove,
+}: {
+  topic: TopicWithEvals
+  campaign: Campaign
+  gradient: string
+  onClose: () => void
+  onApprove: () => void
+}) {
+  const stats = useMemo(
+    () => ({
+      likes: Math.floor(Math.random() * 2 + 1) + '万',
+      comments: Math.floor(Math.random() * 5000 + 500),
+      favorites: Math.floor(Math.random() * 3 + 1) + '万',
+    }),
+    []
+  )
+
+  const hashtags = useMemo(() => {
+    const tags = [
+      `#${campaign.brand_name}`,
+      `#${campaign.ip_name}`,
+      `#${campaign.tone}`,
+      '#种草',
+      '#品牌联名',
+    ]
+    return tags.slice(0, 4).join(' ')
+  }, [campaign.brand_name, campaign.ip_name, campaign.tone])
+
+  const topicTags = useMemo(() => {
+    const base = [campaign.brand_name, campaign.ip_name, '联名']
+    return base.slice(0, 3)
+  }, [campaign.brand_name, campaign.ip_name])
+
+  const fakeComments = [
+    { user: '嘟嘟同学', avatar: '🎀', text: '说的就是我！！' },
+    { user: '打工不累人', avatar: '☕', text: '已下单，等会去取～' },
+    { user: 'Yuki_', avatar: '💼', text: '转发给闺蜜了，她肯定爱' },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-8">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+
+      <div className="relative z-10 w-full max-w-5xl max-h-full flex flex-col md:flex-row gap-6 items-center justify-center">
+        <button
+          onClick={onClose}
+          className="absolute top-0 right-0 -mt-2 -mr-2 md:mt-2 md:mr-2 w-9 h-9 rounded-full bg-white/90 text-gray-800 hover:bg-white flex items-center justify-center shadow-lg z-20"
+          aria-label="关闭"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        {/* Phone frame */}
+        <div className="flex-shrink-0">
+          <div className="w-[320px] h-[660px] bg-black rounded-[44px] p-3 shadow-2xl border-[3px] border-gray-800 relative">
+            <div className="w-full h-full bg-white rounded-[32px] overflow-hidden flex flex-col relative">
+              {/* Status bar */}
+              <div className="flex-shrink-0 flex items-center justify-between px-6 pt-2 pb-1 text-[11px] font-semibold text-black">
+                <span>9:41</span>
+                <div className="flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2 22h3v-6H2v6zm5 0h3V12H7v10zm5 0h3V8h-3v14zm5 0h3V4h-3v18z" />
+                  </svg>
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 21l3.5-4.5h-7L12 21zm0-18C7.03 3 3 7.03 3 12c0 .34.02.67.05 1h2.02C5.03 12.67 5 12.34 5 12c0-3.87 3.13-7 7-7s7 3.13 7 7c0 .34-.03.67-.07 1h2.02c.03-.33.05-.66.05-1 0-4.97-4.03-9-9-9z" />
+                  </svg>
+                  <span className="w-6 h-3 border border-black rounded-sm relative ml-0.5">
+                    <span className="absolute inset-0.5 bg-black rounded-[1px]" />
+                  </span>
+                </div>
+              </div>
+
+              {/* App bar */}
+              <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-gray-100">
+                <span className="text-red-500 font-black text-lg tracking-tight">小红书</span>
+                <div className="flex items-center gap-3 text-gray-700">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Scroll content */}
+              <div
+                className="flex-1 overflow-y-auto"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                <style>{`.xhs-scroll::-webkit-scrollbar{display:none}`}</style>
+
+                {/* Post header */}
+                <div className="flex items-center gap-2 px-4 py-3">
+                  <div
+                    className={`w-9 h-9 rounded-full bg-gradient-to-br ${gradient} flex-shrink-0`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {campaign.brand_name}官方
+                    </p>
+                    <p className="text-[11px] text-gray-400">刚刚 · 来自{campaign.ip_name}</p>
+                  </div>
+                  <button className="flex-shrink-0 px-3 py-1 rounded-full bg-red-500 text-white text-xs font-medium">
+                    + 关注
+                  </button>
+                </div>
+
+                {/* Cover image (gradient) */}
+                <div
+                  className={`aspect-square bg-gradient-to-br ${gradient} relative flex items-center justify-center`}
+                >
+                  <span className="text-white/80 text-[120px] font-black leading-none">
+                    #{String(topic.seq_num).padStart(2, '0')}
+                  </span>
+                  <div className="absolute bottom-3 right-3 flex flex-wrap gap-1.5 justify-end max-w-[200px]">
+                    {topicTags.map((t, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-white text-[10px] font-medium"
+                      >
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Post body */}
+                <div className="px-4 py-3 space-y-2">
+                  <h3 className="text-[15px] font-bold text-gray-900 leading-snug">
+                    {topic.title}
+                  </h3>
+                  <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
+                    {topic.hook}
+                  </p>
+                  <p className="text-[12px] text-blue-500 leading-relaxed">{hashtags}</p>
+                </div>
+
+                {/* Interaction bar */}
+                <div className="flex items-center justify-around px-4 py-2 border-t border-b border-gray-100 text-gray-700 text-xs">
+                  <div className="flex items-center gap-1">
+                    <span className="text-base">❤</span>
+                    <span>{stats.likes}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-base">💬</span>
+                    <span>{stats.comments}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-base">⭐</span>
+                    <span>{stats.favorites}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-gray-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span>分享</span>
+                  </div>
+                </div>
+
+                {/* Comments */}
+                <div className="px-4 py-3 space-y-3">
+                  <p className="text-xs text-gray-400 font-medium">共 {stats.comments} 条评论</p>
+                  {fakeComments.map((c, i) => (
+                    <div key={i} className="flex gap-2">
+                      <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-sm flex-shrink-0">
+                        {c.avatar}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] text-gray-500">{c.user}</p>
+                        <p className="text-[13px] text-gray-800 leading-snug">{c.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="h-16" />
+              </div>
+
+              {/* Bottom nav */}
+              <div className="flex-shrink-0 border-t border-gray-100 bg-white">
+                <div className="flex items-center justify-around py-2 text-[10px] text-gray-500">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-base">🏠</span>
+                    <span className="text-red-500 font-semibold">首页</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-base">🧭</span>
+                    <span>探索</span>
+                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center text-white text-lg font-bold">
+                    +
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-base">💬</span>
+                    <span>消息</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-base">👤</span>
+                    <span>我</span>
+                  </div>
+                </div>
+                {/* Home bar */}
+                <div className="flex justify-center pb-1.5">
+                  <div className="w-24 h-1 bg-black rounded-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right info panel */}
+        <div className="hidden md:block w-[360px] bg-white rounded-2xl shadow-2xl p-5 max-h-[660px] overflow-y-auto">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs text-gray-400">选题编号</span>
+            <span className="text-xs font-semibold text-brand-green">
+              #{String(topic.seq_num).padStart(2, '0')}
+            </span>
+          </div>
+          <h3 className="text-lg font-bold text-gray-900 leading-snug mb-4">{topic.title}</h3>
+
+          {topic.exec_plan && (
+            <div className="space-y-2 mb-4">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+                执行方案
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                <div className="p-2.5 bg-gray-50 rounded-lg">
+                  <p className="text-[11px] text-gray-400 mb-0.5">内容格式</p>
+                  <p className="text-sm text-gray-800">{topic.exec_plan.format}</p>
+                </div>
+                <div className="p-2.5 bg-gray-50 rounded-lg">
+                  <p className="text-[11px] text-gray-400 mb-0.5">最佳发布时间</p>
+                  <p className="text-sm text-gray-800">{topic.exec_plan.best_time}</p>
+                </div>
+                <div className="p-2.5 bg-gray-50 rounded-lg">
+                  <p className="text-[11px] text-gray-400 mb-0.5">CTA</p>
+                  <p className="text-sm text-gray-800">{topic.exec_plan.cta}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {topic.persona && (
+            <div className="space-y-2 mb-4">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+                人群锁定
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2.5 bg-gray-50 rounded-lg">
+                  <p className="text-[11px] text-gray-400 mb-0.5">主要人群</p>
+                  <p className="text-sm text-gray-800">{topic.persona.primary}</p>
+                </div>
+                <div className="p-2.5 bg-gray-50 rounded-lg">
+                  <p className="text-[11px] text-gray-400 mb-0.5">平台</p>
+                  <p className="text-sm text-gray-800">{topic.persona.platform}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2 mb-5">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+              预估数据
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="p-2.5 bg-red-50 rounded-lg text-center">
+                <p className="text-[11px] text-gray-400">点赞</p>
+                <p className="text-sm font-bold text-red-500">{stats.likes}</p>
+              </div>
+              <div className="p-2.5 bg-blue-50 rounded-lg text-center">
+                <p className="text-[11px] text-gray-400">评论</p>
+                <p className="text-sm font-bold text-brand-blue">{stats.comments}</p>
+              </div>
+              <div className="p-2.5 bg-yellow-50 rounded-lg text-center">
+                <p className="text-[11px] text-gray-400">收藏</p>
+                <p className="text-sm font-bold text-brand-yellow">{stats.favorites}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <button
+              onClick={onApprove}
+              className="w-full py-3 rounded-xl bg-brand-green text-white text-sm font-semibold hover:opacity-90 transition"
+            >
+              ✓ 通过此选题
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition"
+            >
+              返回评审
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ReviewBoard({ campaign, initialTopics }: Props) {
   const [topics, setTopics] = useState<TopicWithEvals[]>(initialTopics)
   const [current, setCurrent] = useState(0)
   const [sheetTopic, setSheetTopic] = useState<TopicWithEvals | null>(null)
+  const [previewTopic, setPreviewTopic] = useState<TopicWithEvals | null>(null)
+  const [previewGradient, setPreviewGradient] = useState<string>(GRADIENTS[0])
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+
+  async function handleShare() {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setToast('链接已复制')
+    } catch {
+      setToast('复制失败')
+    }
+    setTimeout(() => setToast(null), 2000)
+  }
 
   const touchStartX = useRef<number | null>(null)
 
@@ -408,10 +728,21 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
               {campaign.brand_name} × {campaign.ip_name}
             </h1>
           </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={handleShare}
+            title="分享此链接"
+            className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+            aria-label="分享"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+          </button>
           <button
             onClick={handleGenerate}
             disabled={generating}
-            className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-green text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-green text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
           >
             {generating ? (
               <>
@@ -430,6 +761,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
               </>
             )}
           </button>
+          </div>
         </div>
       </header>
 
@@ -505,12 +837,27 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                     ))}
                   </div>
 
-                  <button
-                    onClick={() => setSheetTopic(topic)}
-                    className="w-full py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-                  >
-                    查看详情
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSheetTopic(topic)}
+                      className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                    >
+                      查看详情
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPreviewGradient(GRADIENTS[current % GRADIENTS.length])
+                        setPreviewTopic(topic)
+                      }}
+                      className="flex-1 py-2 rounded-lg bg-gradient-to-r from-red-500 to-pink-500 text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-1"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      出街预览
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -560,6 +907,25 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
 
       {sheetTopic && (
         <DetailSheet topic={sheetTopic} onClose={() => setSheetTopic(null)} />
+      )}
+
+      {previewTopic && (
+        <XhsPreviewModal
+          topic={previewTopic}
+          campaign={campaign}
+          gradient={previewGradient}
+          onClose={() => setPreviewTopic(null)}
+          onApprove={() => {
+            updateStatus(previewTopic.id, 'approved')
+            setPreviewTopic(null)
+          }}
+        />
+      )}
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-lg bg-gray-900 text-white text-sm shadow-xl animate-in fade-in slide-in-from-bottom-2">
+          {toast}
+        </div>
       )}
     </div>
   )
