@@ -702,9 +702,130 @@ function XhsPreviewModal({
   )
 }
 
+function XhsFeedCard({
+  topic,
+  index,
+  campaign,
+  onOpen,
+}: {
+  topic: TopicWithEvals
+  index: number
+  campaign: Campaign
+  onOpen: () => void
+}) {
+  const gradient = GRADIENTS[index % GRADIENTS.length]
+  const tags = topicTagChips(topic)
+  const brandInitial = (campaign.brand_name || '·').trim().charAt(0).toUpperCase()
+  const statusText = STATUS_LABELS[topic.status] ?? topic.status
+  const reviewerCount = topic.ai_evaluations.length
+  const scoreLabel = topic.ai_avg_score !== null ? topic.ai_avg_score.toFixed(1) : '--'
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group text-left bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+    >
+      {/* Cover */}
+      <div className={`relative aspect-[3/4] bg-gradient-to-br ${gradient} overflow-hidden`}>
+        {/* Seq badge */}
+        <div className="absolute top-2.5 left-2.5 z-10">
+          <span className="px-2 py-0.5 rounded-full bg-black/30 backdrop-blur-sm text-white text-[11px] font-semibold tabular-nums">
+            #{String(topic.seq_num).padStart(2, '0')}
+          </span>
+        </div>
+        {/* Status badge */}
+        <div className="absolute top-2.5 right-2.5 z-10">
+          <CoverStatusBadge status={topic.status} />
+        </div>
+        {/* Title */}
+        <div className="absolute inset-0 flex items-center justify-center p-4">
+          <h3
+            className="text-white font-black leading-tight text-center text-[18px] md:text-[20px] line-clamp-4"
+            style={{ textShadow: '0 2px 10px rgba(0,0,0,0.35)' }}
+          >
+            {topic.title}
+          </h3>
+        </div>
+        {/* Bottom gradient + hook */}
+        <div className="absolute inset-x-0 bottom-0 pt-10 pb-3 px-3 bg-gradient-to-t from-black/60 via-black/30 to-transparent">
+          <p className="text-white/95 text-xs leading-snug line-clamp-2">{topic.hook}</p>
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="p-3 space-y-2">
+        {/* Author row */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div
+            className={`w-6 h-6 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0`}
+          >
+            {brandInitial}
+          </div>
+          <span className="text-[12px] text-gray-700 font-medium truncate">{campaign.brand_name}</span>
+          <span className="text-[11px] text-gray-300 flex-shrink-0">·</span>
+          <span className="text-[11px] text-gray-400 flex-shrink-0">刚刚</span>
+        </div>
+
+        {/* Tags */}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {tags.slice(0, 3).map((t, i) => (
+              <TagChip key={i} label={t} color={TAG_COLORS[i % TAG_COLORS.length]} />
+            ))}
+          </div>
+        )}
+
+        {/* Stats row */}
+        <div className="flex items-center gap-3 text-[11px] text-gray-500 pt-0.5">
+          <span className="flex items-center gap-0.5">
+            <span className="text-red-500">❤</span>
+            <span className={`font-semibold tabular-nums ${topic.ai_avg_score !== null ? scoreColor(topic.ai_avg_score) : 'text-gray-400'}`}>
+              {scoreLabel}
+            </span>
+          </span>
+          <span className="flex items-center gap-0.5">
+            <span>💬</span>
+            <span className="tabular-nums">{reviewerCount}</span>
+          </span>
+          <span className="flex items-center gap-0.5 ml-auto">
+            <span>⭐</span>
+            <span>{statusText}</span>
+          </span>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+function XhsFeedView({
+  topics,
+  campaign,
+  onOpen,
+}: {
+  topics: TopicWithEvals[]
+  campaign: Campaign
+  onOpen: (topic: TopicWithEvals) => void
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {topics.map((t, i) => (
+        <XhsFeedCard
+          key={t.id}
+          topic={t}
+          index={i}
+          campaign={campaign}
+          onOpen={() => onOpen(t)}
+        />
+      ))}
+    </div>
+  )
+}
+
 export default function ReviewBoard({ campaign, initialTopics }: Props) {
   const [topics, setTopics] = useState<TopicWithEvals[]>(initialTopics)
   const [current, setCurrent] = useState(0)
+  const [feedView, setFeedView] = useState(true)
   const [sheetTopic, setSheetTopic] = useState<TopicWithEvals | null>(null)
   const [previewTopic, setPreviewTopic] = useState<TopicWithEvals | null>(null)
   const [previewGradient, setPreviewGradient] = useState<string>(GRADIENTS[0])
@@ -820,6 +941,32 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
+              onClick={() => setFeedView((v) => !v)}
+              title={feedView ? '切换到策划视图' : '切换到XHS视图'}
+              className="hidden sm:flex items-center gap-1.5 px-2.5 h-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition text-xs font-medium"
+              aria-label="切换视图"
+            >
+              {feedView ? (
+                <>
+                  <span>🗂️</span>
+                  <span>策划视图</span>
+                </>
+              ) : (
+                <>
+                  <span>📱</span>
+                  <span>XHS视图</span>
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => setFeedView((v) => !v)}
+              title={feedView ? '切换到策划视图' : '切换到XHS视图'}
+              className="sm:hidden flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition text-base"
+              aria-label="切换视图"
+            >
+              {feedView ? '🗂️' : '📱'}
+            </button>
+            <button
               onClick={handleShare}
               title="分享此链接"
               className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
@@ -882,8 +1029,8 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
       </header>
 
       {/* Main */}
-      <main className="flex-1 overflow-hidden flex flex-col items-center justify-center px-4 py-6 bg-gray-50">
-        <div className="w-full max-w-lg">
+      <main className={`flex-1 overflow-y-auto ${feedView ? 'px-3 md:px-6 py-4' : 'flex flex-col items-center justify-center px-4 py-6'} bg-gray-50`}>
+        <div className={`w-full mx-auto ${feedView ? 'max-w-3xl' : 'max-w-lg'}`}>
           {genError && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
               {genError}
@@ -912,7 +1059,11 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
             </div>
           )}
 
-          {!generating && topics.length > 0 && topic && (
+          {!generating && topics.length > 0 && feedView && (
+            <XhsFeedView topics={topics} campaign={campaign} onOpen={(t) => setSheetTopic(t)} />
+          )}
+
+          {!generating && !feedView && topics.length > 0 && topic && (
             <>
               {/* Card */}
               <div
