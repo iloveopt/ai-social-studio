@@ -1,11 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextRequest } from 'next/server'
-import OpenAI from 'openai'
-
-const openai = new OpenAI({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-  baseURL: process.env.ANTHROPIC_BASE_URL,
-})
+import { anthropicClient, CLAUDE_MODEL } from '@/lib/anthropic-client'
 
 const TOPIC_SYSTEM_PROMPT = `你是一位资深中国社交媒体内容策划总监，有15年品牌联名Campaign经验。
 你擅长洞察中国消费者心理，熟悉小红书、抖音、微博的内容传播规律。
@@ -88,8 +83,8 @@ Campaign目标：${goal}
 
 只输出JSON，不要任何其他文字。`
 
-  const response = await openai.chat.completions.create({
-    model: 'claude-sonnet-4-5',
+  const response = await anthropicClient.chat.completions.create({
+    model: CLAUDE_MODEL,
     messages: [
       { role: 'system', content: TOPIC_SYSTEM_PROMPT },
       { role: 'user', content: userPrompt },
@@ -125,8 +120,8 @@ ${topicsJson}
 
 只输出JSON。`
 
-  const response = await openai.chat.completions.create({
-    model: 'claude-sonnet-4-5',
+  const response = await anthropicClient.chat.completions.create({
+    model: CLAUDE_MODEL,
     messages: [
       { role: 'system', content: EVAL_SYSTEM_PROMPT },
       { role: 'user', content: userPrompt },

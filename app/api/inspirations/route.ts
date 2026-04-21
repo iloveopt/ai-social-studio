@@ -1,12 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextRequest } from 'next/server'
-import OpenAI from 'openai'
+import { anthropicClient, CLAUDE_MODEL } from '@/lib/anthropic-client'
 import type { InspirationSuggestion } from '@/types'
-
-const openai = new OpenAI({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-  baseURL: process.env.ANTHROPIC_BASE_URL,
-})
 
 const MAX_SIZE = 5 * 1024 * 1024
 
@@ -83,8 +78,8 @@ export async function POST(request: NextRequest) {
 
 只输出JSON。`
 
-    const response = await openai.chat.completions.create({
-      model: 'claude-sonnet-4-5',
+    const response = await anthropicClient.chat.completions.create({
+      model: CLAUDE_MODEL,
       messages: [
         {
           role: 'user',
