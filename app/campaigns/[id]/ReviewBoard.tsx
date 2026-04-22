@@ -5,6 +5,44 @@ import { createClient } from '@/lib/supabase/client'
 import type { Campaign, TopicWithEvals, Comment, AiEvaluation } from '@/types'
 import InspirationUploader from './InspirationUploader'
 
+// Pastel palette for topic "cover images" (keyed by seq_num)
+const SEQ_PALETTE: Array<{ bg: string; accent: string; avatar: string }> = [
+  { bg: '#FFE4E1', accent: '#FFB7A0', avatar: 'linear-gradient(135deg,#FF9A8B,#FF6A88)' },
+  { bg: '#E8F5E9', accent: '#A5D6A7', avatar: 'linear-gradient(135deg,#84FAB0,#8FD3F4)' },
+  { bg: '#E3F2FD', accent: '#90CAF9', avatar: 'linear-gradient(135deg,#89F7FE,#66A6FF)' },
+  { bg: '#FFF3E0', accent: '#FFCC80', avatar: 'linear-gradient(135deg,#FFD26F,#FF8A3D)' },
+  { bg: '#F3E5F5', accent: '#CE93D8', avatar: 'linear-gradient(135deg,#C471F5,#FA71CD)' },
+]
+
+function palette(seq: number) {
+  return SEQ_PALETTE[(seq - 1) % SEQ_PALETTE.length]
+}
+
+// Deterministic pseudo-random based on topic id for mock social counts
+function hashStr(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
+  return Math.abs(h)
+}
+
+function mockLikes(topic: TopicWithEvals): number {
+  const base = Math.round((topic.ai_avg_score ?? 3.5) * 10)
+  return base + (hashStr(topic.id) % 7)
+}
+function mockSaves(topic: TopicWithEvals): number {
+  return Math.max(1, Math.round(mockLikes(topic) * 0.35) + (hashStr(topic.id + 's') % 5))
+}
+function mockCommentCount(topic: TopicWithEvals, realCount: number): number {
+  return realCount + topic.ai_evaluations.length + (hashStr(topic.id + 'c') % 4)
+}
+
+function formatCount(n: number): string {
+  if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '万'
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+  return String(n)
+}
+
+// Planning-view gradients (used by the strategic card + preview modal)
 const GRADIENTS = [
   'from-emerald-500 to-teal-600',
   'from-violet-500 to-purple-600',
@@ -131,15 +169,11 @@ function EvalCard({ ev }: { ev: AiEvaluation }) {
   )
 }
 
-function CommentsTab({ topicId }: { topicId: string }) {
-  const supabase = createClient()
+// Shared: fetch + subscribe to real comments for a topic
+function useRealtimeComments(topicId: string) {
   const [comments, setComments] = useState<Comment[]>([])
-  const [name, setName] = useState('')
-  const [role, setRole] = useState('')
-  const [text, setText] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
   useEffect(() => {
+    const supabase = createClient()
     supabase
       .from('comments')
       .select('*')
@@ -159,6 +193,15 @@ function CommentsTab({ topicId }: { topicId: string }) {
 
     return () => { supabase.removeChannel(channel) }
   }, [topicId])
+  return comments
+}
+
+function PlanningCommentsTab({ topicId }: { topicId: string }) {
+  const comments = useRealtimeComments(topicId)
+  const [name, setName] = useState('')
+  const [role, setRole] = useState('')
+  const [text, setText] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -228,33 +271,387 @@ function CommentsTab({ topicId }: { topicId: string }) {
   )
 }
 
-function DetailSheet({
+/* ---------------------------------------------------------------------
+ * XHS DETAIL PAGE — full-screen, mimics a 小红书 post
+ * ------------------------------------------------------------------- */
+
+function XhsDetailPage({
   topic,
+  campaign,
   onClose,
 }: {
   topic: TopicWithEvals
+  campaign: Campaign
   onClose: () => void
 }) {
-  const [tab, setTab] = useState<TabKey>('thinking')
+  const comments = useRealtimeComments(topic.id)
+  const [imgIdx, setImgIdx] = useState(0)
+  const [followed, setFollowed] = useState(false)
+  const [liked, setLiked] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [userName, setUserName] = useState('')
+  const [showNameInput, setShowNameInput] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [showPlanDrawer, setShowPlanDrawer] = useState(false)
+
+  const p = palette(topic.seq_num)
+  const likesRaw = mockLikes(topic) + (liked ? 1 : 0)
+  const savesRaw = mockSaves(topic) + (saved ? 1 : 0)
+  const commentCount = mockCommentCount(topic, comments.length)
+
+  // Two "slides" for the cover: one with title, one with hook/thinking quote
+  const slides = useMemo(() => {
+    const s: Array<{ label: string; text: string }> = [
+      { label: 'title', text: topic.title },
+    ]
+    const second = topic.hook || topic.thinking || ''
+    if (second) s.push({ label: 'hook', text: second })
+    return s
+  }, [topic.title, topic.hook, topic.thinking])
+
+  const touchStartX = useRef<number | null>(null)
+  function onTouchStart(e: React.TouchEvent) { touchStartX.current = e.touches[0].clientX }
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    if (dx > 50 && imgIdx > 0) setImgIdx(imgIdx - 1)
+    else if (dx < -50 && imgIdx < slides.length - 1) setImgIdx(imgIdx + 1)
+    touchStartX.current = null
+  }
+
+  async function submitComment(e: React.FormEvent) {
+    e.preventDefault()
+    if (!commentText.trim()) return
+    if (!userName.trim()) { setShowNameInput(true); return }
+    setSubmitting(true)
+    try {
+      await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic_id: topic.id,
+          user_name: userName.trim(),
+          content: commentText.trim(),
+        }),
+      })
+      setCommentText('')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const bodyText = (topic.thinking || topic.hook || '').slice(0, 100)
+  const bodyFull = topic.thinking || topic.hook || ''
+  const truncated = bodyFull.length > 100
+
+  const brandName = campaign.brand_name || '品牌号'
+  const brandInitial = brandName.trim().charAt(0).toUpperCase()
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+    <div className="fixed inset-0 z-50 flex justify-center bg-gray-100">
+      <div className="w-full max-w-[390px] min-h-screen bg-white relative shadow-[0_0_24px_rgba(0,0,0,0.08)] flex flex-col">
+        {/* Top bar */}
+        <header className="flex-shrink-0 flex items-center gap-2 px-3 py-2.5 bg-white border-b border-gray-50">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 -ml-1 flex items-center justify-center text-gray-800 hover:bg-gray-50 rounded-full"
+            aria-label="返回"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+              style={{ backgroundImage: p.avatar }}
+            >
+              {brandInitial}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-semibold text-gray-900 truncate leading-tight">
+                {brandName}
+              </p>
+              <p className="text-[10px] text-gray-400 truncate leading-tight">
+                {campaign.ip_name} · 刚刚
+              </p>
+            </div>
+            <button
+              onClick={() => setFollowed((v) => !v)}
+              className={`flex-shrink-0 px-3 h-7 rounded-full text-[12px] font-semibold transition ${
+                followed
+                  ? 'bg-gray-100 text-gray-500'
+                  : 'bg-red-500 text-white hover:bg-red-600'
+              }`}
+            >
+              {followed ? '已关注' : '+ 关注'}
+            </button>
+          </div>
+          <button
+            className="w-8 h-8 flex items-center justify-center text-gray-700 hover:bg-gray-50 rounded-full flex-shrink-0"
+            aria-label="分享"
+            onClick={async () => {
+              try { await navigator.clipboard.writeText(window.location.href) } catch {}
+            }}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12v.01M4 6v.01M4 18v.01M10 6h10M10 12h10M10 18h10" />
+            </svg>
+          </button>
+        </header>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto pb-16">
+          {/* Cover image (swipeable) */}
+          <div
+            className="relative w-full aspect-[4/3] overflow-hidden select-none"
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+          >
+            <div
+              className="absolute inset-0 flex transition-transform duration-300 ease-out"
+              style={{ transform: `translateX(-${imgIdx * 100}%)`, width: `${slides.length * 100}%` }}
+            >
+              {slides.map((slide, i) => (
+                <div
+                  key={i}
+                  className="relative flex items-center justify-center"
+                  style={{
+                    width: `${100 / slides.length}%`,
+                    background: `linear-gradient(135deg, ${p.bg} 0%, ${p.accent} 100%)`,
+                  }}
+                >
+                  {/* Decorative dots */}
+                  <div className="absolute top-6 left-6 w-16 h-16 rounded-full opacity-30" style={{ background: p.accent }} />
+                  <div className="absolute bottom-10 right-8 w-24 h-24 rounded-full opacity-25" style={{ background: p.accent }} />
+                  <div className="relative z-10 px-8 text-center">
+                    {slide.label === 'title' ? (
+                      <>
+                        <p className="text-[11px] font-semibold text-gray-500 mb-3 tracking-[0.2em]">
+                          #{String(topic.seq_num).padStart(2, '0')} · {campaign.ip_name}
+                        </p>
+                        <h2
+                          className="text-gray-900 text-[22px] font-black leading-[1.3]"
+                          style={{ textShadow: '0 2px 8px rgba(255,255,255,0.6)' }}
+                        >
+                          {slide.text}
+                        </h2>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[11px] font-semibold text-gray-500 mb-3 tracking-[0.2em]">
+                          HOOK · 情绪共鸣
+                        </p>
+                        <p
+                          className="text-gray-800 text-[18px] font-bold leading-[1.5] whitespace-pre-line"
+                          style={{ textShadow: '0 2px 8px rgba(255,255,255,0.6)' }}
+                        >
+                          {slide.text}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Page indicator */}
+            {slides.length > 1 && (
+              <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-white text-[11px] font-medium tabular-nums">
+                {imgIdx + 1}/{slides.length}
+              </div>
+            )}
+
+            {/* Dots */}
+            {slides.length > 1 && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
+                {slides.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === imgIdx ? 'w-4 bg-white' : 'w-1.5 bg-white/50'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Body */}
+          <div className="px-4 pt-3 pb-4">
+            <h1 className="text-[17px] font-bold text-gray-900 leading-snug mb-2">
+              {topic.title}
+            </h1>
+            <p className="text-[14px] text-gray-800 leading-[1.65] whitespace-pre-line">
+              {bodyText}{truncated && '…'}
+            </p>
+
+            {/* Hashtags */}
+            <div className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[13px] text-[#3d7eff]">
+              <span>#{brandName}</span>
+              <span>#{campaign.ip_name}</span>
+              {campaign.tone && <span>#{campaign.tone}</span>}
+              <span>#种草</span>
+              <span>#品牌联名</span>
+            </div>
+
+            <p className="mt-3 text-[11px] text-gray-400">
+              {topic.ai_evaluations.length} 位 AI 评委已打分 · 平均{' '}
+              {topic.ai_avg_score !== null ? topic.ai_avg_score.toFixed(1) : '--'}
+            </p>
+
+            <button
+              onClick={() => setShowPlanDrawer(true)}
+              className="mt-3 inline-flex items-center gap-1 text-[12px] text-gray-500 hover:text-gray-700"
+            >
+              <span>📋</span>
+              <span>查看选题策划（AI评分 / 执行方案）</span>
+            </button>
+          </div>
+
+          {/* Comments section */}
+          <div className="border-t-[6px] border-gray-50" />
+          <div className="px-4 pt-3 pb-4">
+            <p className="text-[13px] text-gray-500 mb-3">
+              共 <span className="font-semibold text-gray-700">{commentCount}</span> 条评论
+            </p>
+            {comments.length === 0 ? (
+              <p className="text-[13px] text-gray-400 text-center py-6">暂时还没有评论，快来抢沙发～</p>
+            ) : (
+              <div className="space-y-4">
+                {comments.map((c, i) => {
+                  const cp = palette((i % 5) + 1)
+                  return (
+                    <div key={c.id} className="flex gap-2.5">
+                      <div
+                        className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[11px] font-bold"
+                        style={{ backgroundImage: cp.avatar }}
+                      >
+                        {c.user_name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] text-gray-500">
+                          {c.user_name}
+                          {c.user_role && <span className="ml-1 text-gray-400">· {c.user_role}</span>}
+                        </p>
+                        <p className="text-[14px] text-gray-900 leading-snug mt-0.5">{c.content}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          {new Date(c.created_at).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="h-4" />
+        </div>
+
+        {/* Bottom fixed bar */}
+        <footer className="flex-shrink-0 border-t border-gray-100 bg-white">
+          {showNameInput && (
+            <div className="px-3 pt-2 pb-1">
+              <input
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                placeholder="输入你的昵称..."
+                className="w-full h-9 px-3 rounded-full bg-gray-100 text-[13px] text-gray-800 focus:outline-none focus:bg-gray-200"
+              />
+            </div>
+          )}
+          <form onSubmit={submitComment} className="flex items-center gap-2 px-3 py-2">
+            <div className="flex-1 flex items-center h-9 bg-gray-100 rounded-full px-4">
+              <input
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="说点什么..."
+                className="flex-1 bg-transparent text-[13px] text-gray-800 placeholder-gray-400 focus:outline-none"
+              />
+              {commentText.trim() && (
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="ml-2 text-[13px] font-semibold text-red-500 disabled:opacity-50"
+                >
+                  发送
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setLiked((v) => !v)}
+              className="flex items-center gap-0.5"
+              aria-label="点赞"
+            >
+              {liked ? (
+                <svg className="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 21s-7.5-4.6-10-9.2C.2 8.5 1.7 4.5 5.5 4.5c2.1 0 3.6 1 4.5 2.3.4.6 1.3 1.6 2 2.5.7-.9 1.6-1.9 2-2.5.9-1.3 2.4-2.3 4.5-2.3 3.8 0 5.3 4 3.5 7.3C19.5 16.4 12 21 12 21z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" />
+                </svg>
+              )}
+              <span className="text-[11px] text-gray-700 tabular-nums">{formatCount(likesRaw)}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSaved((v) => !v)}
+              className="flex items-center gap-0.5"
+              aria-label="收藏"
+            >
+              {saved ? (
+                <svg className="w-6 h-6 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2.5l2.9 6.3 6.9.6-5.2 4.6 1.6 6.7L12 17.2 5.8 20.7l1.6-6.7L2.2 9.4l6.9-.6L12 2.5z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.92 5.908a1 1 0 00.95.69h6.213c.969 0 1.371 1.24.588 1.81l-5.025 3.65a1 1 0 00-.364 1.118l1.92 5.908c.3.922-.755 1.688-1.54 1.118l-5.025-3.65a1 1 0 00-1.175 0l-5.025 3.65c-.784.57-1.838-.196-1.539-1.118l1.92-5.908a1 1 0 00-.364-1.118l-5.025-3.65c-.783-.57-.38-1.81.588-1.81h6.213a1 1 0 00.95-.69l1.92-5.908z" />
+                </svg>
+              )}
+              <span className="text-[11px] text-gray-700 tabular-nums">{formatCount(savesRaw)}</span>
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-0.5"
+              aria-label="评论"
+            >
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span className="text-[11px] text-gray-700 tabular-nums">{formatCount(commentCount)}</span>
+            </button>
+          </form>
+        </footer>
+      </div>
+
+      {/* Planning drawer */}
+      {showPlanDrawer && (
+        <PlanningDrawer topic={topic} onClose={() => setShowPlanDrawer(false)} />
+      )}
+    </div>
+  )
+}
+
+/* Planning drawer overlays on top of the XHS detail — for users who want the AI review context */
+function PlanningDrawer({ topic, onClose }: { topic: TopicWithEvals; onClose: () => void }) {
+  const [tab, setTab] = useState<TabKey>('ai-score')
+
+  return (
+    <div className="fixed inset-0 z-[60] flex justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-t-2xl max-h-[85vh] flex flex-col shadow-2xl">
-        {/* Handle */}
+      <div className="relative w-full max-w-[390px] mt-auto bg-white rounded-t-2xl max-h-[85vh] flex flex-col shadow-2xl">
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-gray-200 rounded-full" />
         </div>
-
-        {/* Header */}
         <div className="px-4 pb-3 border-b border-gray-100">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs text-gray-400 mb-0.5">
-                #{String(topic.seq_num).padStart(2, '0')}
-              </p>
+              <p className="text-xs text-gray-400 mb-0.5">#{String(topic.seq_num).padStart(2, '0')}</p>
               <h2 className="text-base font-bold text-gray-900 leading-snug">{topic.title}</h2>
-              <p className="text-sm text-gray-500 mt-1 line-clamp-2">{topic.hook}</p>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 flex-shrink-0 mt-0.5">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -262,17 +659,13 @@ function DetailSheet({
               </svg>
             </button>
           </div>
-
-          {/* Tabs */}
           <div className="flex gap-0.5 mt-3 overflow-x-auto scrollbar-none">
             {TABS.map((t) => (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
-                  tab === t.key
-                    ? 'bg-brand-green text-white'
-                    : 'text-gray-500 hover:bg-gray-100'
+                  tab === t.key ? 'bg-brand-green text-white' : 'text-gray-500 hover:bg-gray-100'
                 }`}
               >
                 {t.label}
@@ -280,21 +673,16 @@ function DetailSheet({
             ))}
           </div>
         </div>
-
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {tab === 'thinking' && (
-            <div className="space-y-4">
-              {topic.thinking ? (
-                <blockquote className="text-sm text-gray-700 leading-relaxed pl-4 border-l-4 border-brand-green bg-brand-green/5 py-3 pr-3 rounded-r-lg whitespace-pre-line">
-                  {topic.thinking}
-                </blockquote>
-              ) : (
-                <p className="text-sm text-gray-400">暂无</p>
-              )}
-            </div>
+            topic.thinking ? (
+              <blockquote className="text-sm text-gray-700 leading-relaxed pl-4 border-l-4 border-brand-green bg-brand-green/5 py-3 pr-3 rounded-r-lg whitespace-pre-line">
+                {topic.thinking}
+              </blockquote>
+            ) : (
+              <p className="text-sm text-gray-400">暂无</p>
+            )
           )}
-
           {tab === 'ai-score' && (
             <div className="space-y-4">
               {topic.ai_avg_score !== null && (
@@ -326,7 +714,6 @@ function DetailSheet({
               </div>
             </div>
           )}
-
           {tab === 'exec-plan' && topic.exec_plan && (
             <div className="space-y-4">
               {[
@@ -342,23 +729,6 @@ function DetailSheet({
                     <p className="text-sm text-gray-800">{item!.value}</p>
                   </div>
                 ))}
-              {topic.handoff && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">承接路径</p>
-                  {topic.handoff.map((step, i) => (
-                    <div key={i} className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="w-5 h-5 rounded-full bg-brand-blue text-white text-xs flex items-center justify-center font-bold">
-                          {i + 1}
-                        </span>
-                        <span className="text-xs font-semibold text-brand-blue">{step.head}</span>
-                        <span className="ml-auto text-xs px-1.5 py-0.5 bg-brand-blue/10 text-brand-blue rounded">{step.tag}</span>
-                      </div>
-                      <p className="text-sm text-gray-700 pl-7">{step.body}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
               {topic.persona && (
                 <div className="p-3 bg-gray-50 rounded-xl">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">人群锁定</p>
@@ -372,7 +742,6 @@ function DetailSheet({
               )}
             </div>
           )}
-
           {tab === 'refs' && (
             <div className="space-y-3">
               {(topic.refs ?? []).map((ref, i) => (
@@ -387,13 +756,16 @@ function DetailSheet({
               )}
             </div>
           )}
-
-          {tab === 'comments' && <CommentsTab topicId={topic.id} />}
+          {tab === 'comments' && <PlanningCommentsTab topicId={topic.id} />}
         </div>
       </div>
     </div>
   )
 }
+
+/* ---------------------------------------------------------------------
+ * PLANNING VIEW — preview modal kept from previous design
+ * ------------------------------------------------------------------- */
 
 function XhsPreviewModal({
   topic,
@@ -408,14 +780,14 @@ function XhsPreviewModal({
   onClose: () => void
   onApprove: () => void
 }) {
-  const stats = useMemo(
-    () => ({
-      likes: Math.floor(Math.random() * 2 + 1) + '万',
-      comments: Math.floor(Math.random() * 5000 + 500),
-      favorites: Math.floor(Math.random() * 3 + 1) + '万',
-    }),
-    []
-  )
+  const stats = useMemo(() => {
+    const h = hashStr(topic.id)
+    return {
+      likes: ((h % 2) + 1) + '.' + (((h >> 3) % 9) + 1) + '万',
+      comments: ((h >> 5) % 4500) + 500,
+      favorites: ((h >> 7) % 3 + 1) + '.' + (((h >> 9) % 9) + 1) + 'k',
+    }
+  }, [topic.id])
 
   const hashtags = useMemo(() => {
     const tags = [
@@ -454,51 +826,26 @@ function XhsPreviewModal({
           </svg>
         </button>
 
-        {/* Phone frame */}
         <div className="flex-shrink-0">
           <div className="w-[320px] h-[660px] bg-black rounded-[44px] p-3 shadow-2xl border-[3px] border-gray-800 relative">
             <div className="w-full h-full bg-white rounded-[32px] overflow-hidden flex flex-col relative">
-              {/* Status bar */}
               <div className="flex-shrink-0 flex items-center justify-between px-6 pt-2 pb-1 text-[11px] font-semibold text-black">
                 <span>9:41</span>
                 <div className="flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M2 22h3v-6H2v6zm5 0h3V12H7v10zm5 0h3V8h-3v14zm5 0h3V4h-3v18z" />
                   </svg>
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 21l3.5-4.5h-7L12 21zm0-18C7.03 3 3 7.03 3 12c0 .34.02.67.05 1h2.02C5.03 12.67 5 12.34 5 12c0-3.87 3.13-7 7-7s7 3.13 7 7c0 .34-.03.67-.07 1h2.02c.03-.33.05-.66.05-1 0-4.97-4.03-9-9-9z" />
-                  </svg>
                   <span className="w-6 h-3 border border-black rounded-sm relative ml-0.5">
                     <span className="absolute inset-0.5 bg-black rounded-[1px]" />
                   </span>
                 </div>
               </div>
-
-              {/* App bar */}
               <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-gray-100">
                 <span className="text-red-500 font-black text-lg tracking-tight">小红书</span>
-                <div className="flex items-center gap-3 text-gray-700">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                </div>
               </div>
-
-              {/* Scroll content */}
-              <div
-                className="flex-1 overflow-y-auto"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                <style>{`.xhs-scroll::-webkit-scrollbar{display:none}`}</style>
-
-                {/* Post header */}
+              <div className="flex-1 overflow-y-auto">
                 <div className="flex items-center gap-2 px-4 py-3">
-                  <div
-                    className={`w-9 h-9 rounded-full bg-gradient-to-br ${gradient} flex-shrink-0`}
-                  />
+                  <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${gradient} flex-shrink-0`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 truncate">
                       {campaign.brand_name}官方
@@ -509,60 +856,28 @@ function XhsPreviewModal({
                     + 关注
                   </button>
                 </div>
-
-                {/* Cover image (gradient) */}
-                <div
-                  className={`aspect-square bg-gradient-to-br ${gradient} relative flex items-center justify-center`}
-                >
+                <div className={`aspect-square bg-gradient-to-br ${gradient} relative flex items-center justify-center`}>
                   <span className="text-white/80 text-[120px] font-black leading-none">
                     #{String(topic.seq_num).padStart(2, '0')}
                   </span>
                   <div className="absolute bottom-3 right-3 flex flex-wrap gap-1.5 justify-end max-w-[200px]">
                     {topicTags.map((t, i) => (
-                      <span
-                        key={i}
-                        className="px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-white text-[10px] font-medium"
-                      >
+                      <span key={i} className="px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-white text-[10px] font-medium">
                         #{t}
                       </span>
                     ))}
                   </div>
                 </div>
-
-                {/* Post body */}
                 <div className="px-4 py-3 space-y-2">
-                  <h3 className="text-[15px] font-bold text-gray-900 leading-snug">
-                    {topic.title}
-                  </h3>
-                  <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
-                    {topic.hook}
-                  </p>
+                  <h3 className="text-[15px] font-bold text-gray-900 leading-snug">{topic.title}</h3>
+                  <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">{topic.hook}</p>
                   <p className="text-[12px] text-blue-500 leading-relaxed">{hashtags}</p>
                 </div>
-
-                {/* Interaction bar */}
                 <div className="flex items-center justify-around px-4 py-2 border-t border-b border-gray-100 text-gray-700 text-xs">
-                  <div className="flex items-center gap-1">
-                    <span className="text-base">❤</span>
-                    <span>{stats.likes}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-base">💬</span>
-                    <span>{stats.comments}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-base">⭐</span>
-                    <span>{stats.favorites}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-gray-400">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    <span>分享</span>
-                  </div>
+                  <div className="flex items-center gap-1"><span className="text-base">❤</span><span>{stats.likes}</span></div>
+                  <div className="flex items-center gap-1"><span className="text-base">💬</span><span>{stats.comments}</span></div>
+                  <div className="flex items-center gap-1"><span className="text-base">⭐</span><span>{stats.favorites}</span></div>
                 </div>
-
-                {/* Comments */}
                 <div className="px-4 py-3 space-y-3">
                   <p className="text-xs text-gray-400 font-medium">共 {stats.comments} 条评论</p>
                   {fakeComments.map((c, i) => (
@@ -577,57 +892,22 @@ function XhsPreviewModal({
                     </div>
                   ))}
                 </div>
-
                 <div className="h-16" />
-              </div>
-
-              {/* Bottom nav */}
-              <div className="flex-shrink-0 border-t border-gray-100 bg-white">
-                <div className="flex items-center justify-around py-2 text-[10px] text-gray-500">
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-base">🏠</span>
-                    <span className="text-red-500 font-semibold">首页</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-base">🧭</span>
-                    <span>探索</span>
-                  </div>
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center text-white text-lg font-bold">
-                    +
-                  </div>
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-base">💬</span>
-                    <span>消息</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-base">👤</span>
-                    <span>我</span>
-                  </div>
-                </div>
-                {/* Home bar */}
-                <div className="flex justify-center pb-1.5">
-                  <div className="w-24 h-1 bg-black rounded-full" />
-                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right info panel */}
         <div className="hidden md:block w-[360px] bg-white rounded-2xl shadow-2xl p-5 max-h-[660px] overflow-y-auto">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs text-gray-400">选题编号</span>
-            <span className="text-xs font-semibold text-brand-green">
-              #{String(topic.seq_num).padStart(2, '0')}
-            </span>
+            <span className="text-xs font-semibold text-brand-green">#{String(topic.seq_num).padStart(2, '0')}</span>
           </div>
           <h3 className="text-lg font-bold text-gray-900 leading-snug mb-4">{topic.title}</h3>
 
           {topic.exec_plan && (
             <div className="space-y-2 mb-4">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
-                执行方案
-              </p>
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">执行方案</p>
               <div className="grid grid-cols-1 gap-2">
                 <div className="p-2.5 bg-gray-50 rounded-lg">
                   <p className="text-[11px] text-gray-400 mb-0.5">内容格式</p>
@@ -645,55 +925,11 @@ function XhsPreviewModal({
             </div>
           )}
 
-          {topic.persona && (
-            <div className="space-y-2 mb-4">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
-                人群锁定
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2.5 bg-gray-50 rounded-lg">
-                  <p className="text-[11px] text-gray-400 mb-0.5">主要人群</p>
-                  <p className="text-sm text-gray-800">{topic.persona.primary}</p>
-                </div>
-                <div className="p-2.5 bg-gray-50 rounded-lg">
-                  <p className="text-[11px] text-gray-400 mb-0.5">平台</p>
-                  <p className="text-sm text-gray-800">{topic.persona.platform}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2 mb-5">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
-              预估数据
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="p-2.5 bg-red-50 rounded-lg text-center">
-                <p className="text-[11px] text-gray-400">点赞</p>
-                <p className="text-sm font-bold text-red-500">{stats.likes}</p>
-              </div>
-              <div className="p-2.5 bg-blue-50 rounded-lg text-center">
-                <p className="text-[11px] text-gray-400">评论</p>
-                <p className="text-sm font-bold text-brand-blue">{stats.comments}</p>
-              </div>
-              <div className="p-2.5 bg-yellow-50 rounded-lg text-center">
-                <p className="text-[11px] text-gray-400">收藏</p>
-                <p className="text-sm font-bold text-brand-yellow">{stats.favorites}</p>
-              </div>
-            </div>
-          </div>
-
           <div className="space-y-2">
-            <button
-              onClick={onApprove}
-              className="w-full py-3 rounded-xl bg-brand-green text-white text-sm font-semibold hover:opacity-90 transition"
-            >
+            <button onClick={onApprove} className="w-full py-3 rounded-xl bg-brand-green text-white text-sm font-semibold hover:opacity-90 transition">
               ✓ 通过此选题
             </button>
-            <button
-              onClick={onClose}
-              className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition"
-            >
+            <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition">
               返回评审
             </button>
           </div>
@@ -703,96 +939,104 @@ function XhsPreviewModal({
   )
 }
 
+/* ---------------------------------------------------------------------
+ * XHS FEED CARD + VIEW — real 小红书-style double-column
+ * ------------------------------------------------------------------- */
+
 function XhsFeedCard({
   topic,
-  index,
   campaign,
   onOpen,
 }: {
   topic: TopicWithEvals
-  index: number
   campaign: Campaign
   onOpen: () => void
 }) {
-  const gradient = GRADIENTS[index % GRADIENTS.length]
-  const tags = topicTagChips(topic)
+  const p = palette(topic.seq_num)
+  const [liked, setLiked] = useState(false)
+  const likes = mockLikes(topic) + (liked ? 1 : 0)
   const brandInitial = (campaign.brand_name || '·').trim().charAt(0).toUpperCase()
-  const statusText = STATUS_LABELS[topic.status] ?? topic.status
-  const reviewerCount = topic.ai_evaluations.length
-  const scoreLabel = topic.ai_avg_score !== null ? topic.ai_avg_score.toFixed(1) : '--'
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="group text-left bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+      className="group block w-full text-left bg-white"
     >
       {/* Cover */}
-      <div className={`relative aspect-[3/4] bg-gradient-to-br ${gradient} overflow-hidden`}>
-        {/* Seq badge */}
-        <div className="absolute top-2.5 left-2.5 z-10">
-          <span className="px-2 py-0.5 rounded-full bg-black/30 backdrop-blur-sm text-white text-[11px] font-semibold tabular-nums">
+      <div
+        className="relative w-full aspect-[3/4] rounded-lg overflow-hidden"
+        style={{ background: `linear-gradient(135deg, ${p.bg} 0%, ${p.accent} 100%)` }}
+      >
+        {/* Decorative blobs */}
+        <div
+          className="absolute -top-4 -left-4 w-20 h-20 rounded-full opacity-40"
+          style={{ background: p.accent }}
+        />
+        <div
+          className="absolute -bottom-6 -right-4 w-24 h-24 rounded-full opacity-30"
+          style={{ background: p.accent }}
+        />
+
+        {/* Seq number */}
+        <div className="absolute top-2 left-2 z-10">
+          <span className="text-[10px] font-bold text-gray-500 tabular-nums bg-white/70 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
             #{String(topic.seq_num).padStart(2, '0')}
           </span>
         </div>
-        {/* Status badge */}
-        <div className="absolute top-2.5 right-2.5 z-10">
-          <CoverStatusBadge status={topic.status} />
-        </div>
-        {/* Title */}
-        <div className="absolute inset-0 flex items-center justify-center p-4">
+
+        {/* Status pill */}
+        {topic.status !== 'pending' && (
+          <div className="absolute top-2 right-2 z-10">
+            <CoverStatusBadge status={topic.status} />
+          </div>
+        )}
+
+        {/* Title overlay */}
+        <div className="absolute inset-0 flex items-center justify-center p-4 z-0">
           <h3
-            className="text-white font-black leading-tight text-center text-[18px] md:text-[20px] line-clamp-4"
-            style={{ textShadow: '0 2px 10px rgba(0,0,0,0.35)' }}
+            className="text-gray-900 text-center text-[15px] font-black leading-[1.35] line-clamp-4"
+            style={{ textShadow: '0 1px 3px rgba(255,255,255,0.6)' }}
           >
             {topic.title}
           </h3>
         </div>
-        {/* Bottom gradient + hook */}
-        <div className="absolute inset-x-0 bottom-0 pt-10 pb-3 px-3 bg-gradient-to-t from-black/60 via-black/30 to-transparent">
-          <p className="text-white/95 text-xs leading-snug line-clamp-2">{topic.hook}</p>
-        </div>
       </div>
 
-      {/* Info */}
-      <div className="p-3 space-y-2">
+      {/* Text area below cover */}
+      <div className="pt-2 pb-1 px-0.5">
+        <p className="text-[14px] font-medium text-gray-800 leading-snug line-clamp-2">
+          {topic.hook}
+        </p>
+
         {/* Author row */}
-        <div className="flex items-center gap-2 min-w-0">
-          <div
-            className={`w-6 h-6 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0`}
+        <div className="flex items-center justify-between mt-1.5">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <div
+              className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[9px] font-bold"
+              style={{ backgroundImage: p.avatar }}
+            >
+              {brandInitial}
+            </div>
+            <span className="text-[12px] text-gray-500 truncate">{campaign.brand_name}</span>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setLiked((v) => !v) }}
+            className="flex items-center gap-0.5 flex-shrink-0"
+            aria-label="点赞"
           >
-            {brandInitial}
-          </div>
-          <span className="text-[12px] text-gray-700 font-medium truncate">{campaign.brand_name}</span>
-          <span className="text-[11px] text-gray-300 flex-shrink-0">·</span>
-          <span className="text-[11px] text-gray-400 flex-shrink-0">刚刚</span>
-        </div>
-
-        {/* Tags */}
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {tags.slice(0, 3).map((t, i) => (
-              <TagChip key={i} label={t} color={TAG_COLORS[i % TAG_COLORS.length]} />
-            ))}
-          </div>
-        )}
-
-        {/* Stats row */}
-        <div className="flex items-center gap-3 text-[11px] text-gray-500 pt-0.5">
-          <span className="flex items-center gap-0.5">
-            <span className="text-red-500">❤</span>
-            <span className={`font-semibold tabular-nums ${topic.ai_avg_score !== null ? scoreColor(topic.ai_avg_score) : 'text-gray-400'}`}>
-              {scoreLabel}
-            </span>
-          </span>
-          <span className="flex items-center gap-0.5">
-            <span>💬</span>
-            <span className="tabular-nums">{reviewerCount}</span>
-          </span>
-          <span className="flex items-center gap-0.5 ml-auto">
-            <span>⭐</span>
-            <span>{statusText}</span>
-          </span>
+            {liked ? (
+              <svg className="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 21s-7.5-4.6-10-9.2C.2 8.5 1.7 4.5 5.5 4.5c2.1 0 3.6 1 4.5 2.3.4.6 1.3 1.6 2 2.5.7-.9 1.6-1.9 2-2.5.9-1.3 2.4-2.3 4.5-2.3 3.8 0 5.3 4 3.5 7.3C19.5 16.4 12 21 12 21z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" />
+              </svg>
+            )}
+            <span className="text-[12px] text-gray-500 tabular-nums">{formatCount(likes)}</span>
+          </button>
         </div>
       </div>
     </button>
@@ -808,26 +1052,36 @@ function XhsFeedView({
   campaign: Campaign
   onOpen: (topic: TopicWithEvals) => void
 }) {
+  // Split into two columns for masonry effect
+  const colA: TopicWithEvals[] = []
+  const colB: TopicWithEvals[] = []
+  topics.forEach((t, i) => (i % 2 === 0 ? colA : colB).push(t))
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {topics.map((t, i) => (
-        <XhsFeedCard
-          key={t.id}
-          topic={t}
-          index={i}
-          campaign={campaign}
-          onOpen={() => onOpen(t)}
-        />
-      ))}
+    <div className="px-2 pt-2 pb-20 flex gap-2">
+      <div className="flex-1 space-y-3">
+        {colA.map((t) => (
+          <XhsFeedCard key={t.id} topic={t} campaign={campaign} onOpen={() => onOpen(t)} />
+        ))}
+      </div>
+      <div className="flex-1 space-y-3">
+        {colB.map((t) => (
+          <XhsFeedCard key={t.id} topic={t} campaign={campaign} onOpen={() => onOpen(t)} />
+        ))}
+      </div>
     </div>
   )
 }
+
+/* ---------------------------------------------------------------------
+ * MAIN REVIEW BOARD
+ * ------------------------------------------------------------------- */
 
 export default function ReviewBoard({ campaign, initialTopics }: Props) {
   const [topics, setTopics] = useState<TopicWithEvals[]>(initialTopics)
   const [current, setCurrent] = useState(0)
   const [feedView, setFeedView] = useState(true)
-  const [sheetTopic, setSheetTopic] = useState<TopicWithEvals | null>(null)
+  const [detailTopic, setDetailTopic] = useState<TopicWithEvals | null>(null)
   const [previewTopic, setPreviewTopic] = useState<TopicWithEvals | null>(null)
   const [previewGradient, setPreviewGradient] = useState<string>(GRADIENTS[0])
   const [generating, setGenerating] = useState(false)
@@ -895,7 +1149,6 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
         const data = await res.json()
         throw new Error(data.error ?? '生成失败')
       }
-      // Re-fetch topics
       const supabase = createClient()
       const { data: topicsData } = await supabase
         .from('topics')
@@ -920,132 +1173,89 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
     return init
   }, [topics])
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 flex-shrink-0">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="min-w-0 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-green to-emerald-600 flex items-center justify-center text-white font-black text-sm flex-shrink-0">
-              S
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                <span className="font-semibold text-gray-500">AI Social Studio</span>
-                <span className="w-0.5 h-0.5 rounded-full bg-gray-300" />
-                <span className="truncate">Campaign</span>
+  /* ------- XHS mode: minimal top chrome, feed content ------- */
+  if (feedView) {
+    return (
+      <div className="flex flex-col min-h-screen bg-white">
+        {/* XHS-style top bar */}
+        <header className="flex-shrink-0 sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-50">
+          <div className="px-3 py-2.5 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center text-white font-black text-[13px] flex-shrink-0">
+                S
               </div>
-              <h1 className="text-sm font-bold text-gray-900 truncate leading-tight">
-                {campaign.brand_name} × {campaign.ip_name}
-              </h1>
+              <div className="min-w-0">
+                <p className="text-[13px] font-bold text-gray-900 leading-tight truncate">
+                  {campaign.brand_name} × {campaign.ip_name}
+                </p>
+                <p className="text-[10px] text-gray-400 leading-tight">
+                  {topics.length} 条选题 · {counts.approved} 通过
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={() => setFeedView((v) => !v)}
-              title={feedView ? '切换到策划视图' : '切换到XHS视图'}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 h-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition text-xs font-medium"
-              aria-label="切换视图"
-            >
-              {feedView ? (
-                <>
-                  <span>🗂️</span>
-                  <span>策划视图</span>
-                </>
-              ) : (
-                <>
-                  <span>📱</span>
-                  <span>XHS视图</span>
-                </>
-              )}
-            </button>
-            <button
-              onClick={() => setFeedView((v) => !v)}
-              title={feedView ? '切换到策划视图' : '切换到XHS视图'}
-              className="sm:hidden flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition text-base"
-              aria-label="切换视图"
-            >
-              {feedView ? '🗂️' : '📱'}
-            </button>
-            <InspirationUploader campaignId={campaign.id} />
-            <button
-              onClick={handleShare}
-              title="分享此链接"
-              className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-              aria-label="分享"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-            </button>
-            <button
-              onClick={handleGenerate}
-              disabled={generating}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand-green text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
-            >
-              {generating ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={() => setFeedView(false)}
+                title="切换到策划视图"
+                className="h-8 px-2.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 text-[11px] font-medium flex items-center gap-1"
+              >
+                <span>🗂️</span>
+                <span className="hidden xs:inline">策划</span>
+              </button>
+              <InspirationUploader campaignId={campaign.id} />
+              <button
+                onClick={handleShare}
+                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50"
+                aria-label="分享"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </button>
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="h-8 px-3 rounded-full bg-red-500 text-white text-[12px] font-semibold hover:bg-red-600 transition disabled:opacity-60 flex items-center gap-1"
+              >
+                {generating ? (
+                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  生成中
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  {topics.length > 0 ? '重新生成' : '生成选题'}
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-        {topics.length > 0 && (
-          <div className="bg-gray-50 border-t border-gray-100">
-            <div className="max-w-lg mx-auto px-4 py-2 flex items-center justify-between text-[12px]">
-              <div className="flex items-center gap-4">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-green" />
-                  <span className="text-gray-500">已通过</span>
-                  <span className="font-bold text-brand-green tabular-nums">{counts.approved}</span>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-yellow" />
-                  <span className="text-gray-500">讨论中</span>
-                  <span className="font-bold text-brand-yellow tabular-nums">{counts.discussing}</span>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-                  <span className="text-gray-500">待审核</span>
-                  <span className="font-bold text-gray-500 tabular-nums">{counts.pending}</span>
-                </span>
-              </div>
-              <span className="text-gray-400">
-                总计 <span className="font-bold text-gray-700 tabular-nums">{topics.length}</span>
-              </span>
+                ) : (
+                  <>
+                    <span>✨</span>
+                    <span>{topics.length > 0 ? '重新生成' : '生成'}</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
-        )}
-      </header>
+          {/* XHS-like tabs */}
+          <div className="flex items-center justify-center gap-5 px-4 pb-2 text-[13px]">
+            <span className="text-gray-400">关注</span>
+            <span className="font-bold text-gray-900 relative">
+              发现
+              <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-[3px] rounded-full bg-red-500" />
+            </span>
+            <span className="text-gray-400">本地</span>
+          </div>
+        </header>
 
-      {/* Main */}
-      <main className={`flex-1 overflow-y-auto ${feedView ? 'px-3 md:px-6 py-4' : 'flex flex-col items-center justify-center px-4 py-6'} bg-gray-50`}>
-        <div className={`w-full mx-auto ${feedView ? 'max-w-3xl' : 'max-w-lg'}`}>
+        <main className="flex-1">
           {genError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+            <div className="m-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
               {genError}
             </div>
           )}
 
           {generating && (
-            <div className="text-center py-16 space-y-4">
+            <div className="text-center py-20 space-y-4 px-6">
               <div className="flex justify-center gap-1.5">
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
-                    className="w-2.5 h-2.5 rounded-full bg-brand-green animate-bounce"
+                    className="w-2.5 h-2.5 rounded-full bg-red-500 animate-bounce"
                     style={{ animationDelay: `${i * 0.15}s` }}
                   />
                 ))}
@@ -1055,25 +1265,119 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
           )}
 
           {!generating && topics.length === 0 && (
-            <div className="text-center py-16 space-y-3">
+            <div className="text-center py-20 space-y-3 px-6">
               <div className="text-5xl">✨</div>
-              <p className="text-gray-500 text-base">点击「生成选题」，让 AI 为你生成内容创意</p>
+              <p className="text-gray-500 text-sm">点击「生成」让 AI 为你生成内容创意</p>
             </div>
           )}
 
-          {!generating && topics.length > 0 && feedView && (
-            <XhsFeedView topics={topics} campaign={campaign} onOpen={(t) => setSheetTopic(t)} />
+          {!generating && topics.length > 0 && (
+            <XhsFeedView topics={topics} campaign={campaign} onOpen={(t) => setDetailTopic(t)} />
+          )}
+        </main>
+
+        {detailTopic && (
+          <XhsDetailPage
+            topic={detailTopic}
+            campaign={campaign}
+            onClose={() => setDetailTopic(null)}
+          />
+        )}
+
+        {toast && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-lg bg-gray-900 text-white text-sm shadow-xl">
+            {toast}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  /* ------- Planning mode (original carousel) ------- */
+  return (
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200 flex-shrink-0">
+        <div className="px-4 py-3 flex items-center justify-between gap-3">
+          <div className="min-w-0 flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-green to-emerald-600 flex items-center justify-center text-white font-black text-sm flex-shrink-0">
+              S
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                <span className="font-semibold text-gray-500">AI Social Studio</span>
+                <span className="w-0.5 h-0.5 rounded-full bg-gray-300" />
+                <span className="truncate">策划视图</span>
+              </div>
+              <h1 className="text-sm font-bold text-gray-900 truncate leading-tight">
+                {campaign.brand_name} × {campaign.ip_name}
+              </h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              onClick={() => setFeedView(true)}
+              title="切换到XHS视图"
+              className="h-8 px-2.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 text-[11px] font-medium flex items-center gap-1"
+            >
+              <span>📱</span>
+              <span>XHS</span>
+            </button>
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="h-8 px-3 rounded-lg bg-brand-green text-white text-[12px] font-medium hover:opacity-90 disabled:opacity-60 flex items-center gap-1"
+            >
+              {generating ? '生成中' : (topics.length > 0 ? '重新生成' : '生成')}
+            </button>
+          </div>
+        </div>
+        {topics.length > 0 && (
+          <div className="bg-gray-50 border-t border-gray-100">
+            <div className="px-4 py-2 flex items-center justify-between text-[12px]">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-brand-green" /><span className="text-gray-500">通过</span><span className="font-bold text-brand-green tabular-nums">{counts.approved}</span></span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-brand-yellow" /><span className="text-gray-500">讨论</span><span className="font-bold text-brand-yellow tabular-nums">{counts.discussing}</span></span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-gray-400" /><span className="text-gray-500">待审</span><span className="font-bold text-gray-500 tabular-nums">{counts.pending}</span></span>
+              </div>
+              <span className="text-gray-400">总计 <span className="font-bold text-gray-700 tabular-nums">{topics.length}</span></span>
+            </div>
+          </div>
+        )}
+      </header>
+
+      <main className="flex-1 overflow-y-auto flex flex-col items-center justify-start px-3 py-4 bg-gray-50">
+        <div className="w-full">
+          {genError && (
+            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+              {genError}
+            </div>
           )}
 
-          {!generating && !feedView && topics.length > 0 && topic && (
+          {generating && (
+            <div className="text-center py-16 space-y-4">
+              <div className="flex justify-center gap-1.5">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="w-2.5 h-2.5 rounded-full bg-brand-green animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                ))}
+              </div>
+              <p className="text-gray-500 text-sm">AI 正在生成选题和评审打分，请稍候…</p>
+            </div>
+          )}
+
+          {!generating && topics.length === 0 && (
+            <div className="text-center py-16 space-y-3">
+              <div className="text-5xl">✨</div>
+              <p className="text-gray-500 text-base">点击「生成」，让 AI 为你生成内容创意</p>
+            </div>
+          )}
+
+          {!generating && topics.length > 0 && topic && (
             <>
-              {/* Card */}
               <div
                 className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden select-none"
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
               >
-                {/* Gradient cover */}
                 <div className={`relative h-36 bg-gradient-to-br ${GRADIENTS[current % GRADIENTS.length]} p-4`}>
                   <div className="absolute top-3 right-3">
                     <CoverStatusBadge status={topic.status} />
@@ -1087,14 +1391,11 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                     <CoverScore score={topic.ai_avg_score} />
                   </div>
                 </div>
-
-                {/* Content */}
                 <div className="p-4 space-y-3">
                   <div>
                     <h2 className="text-[17px] font-bold text-gray-900 leading-snug">{topic.title}</h2>
                     <p className="text-sm text-gray-500 leading-relaxed mt-1.5 line-clamp-2">{topic.hook}</p>
                   </div>
-
                   {(() => {
                     const tags = topicTagChips(topic)
                     if (tags.length === 0) return null
@@ -1106,32 +1407,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                       </div>
                     )
                   })()}
-
-                  {topic.persona && (
-                    <div className="flex items-center gap-1.5 text-[11px] text-gray-500 flex-wrap">
-                      {topic.persona.primary && (
-                        <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                          {topic.persona.primary}
-                        </span>
-                      )}
-                      {topic.persona.primary && topic.persona.platform && <span className="text-gray-300">→</span>}
-                      {topic.persona.platform && (
-                        <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                          {topic.persona.platform}
-                        </span>
-                      )}
-                      {topic.persona.platform && topic.persona.cta && <span className="text-gray-300">→</span>}
-                      {topic.persona.cta && (
-                        <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                          {topic.persona.cta}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Action rows */}
                   <div className="pt-1 space-y-2">
-                    {/* Row 1: preview (full-width secondary) */}
                     <button
                       onClick={() => {
                         setPreviewGradient(GRADIENTS[current % GRADIENTS.length])
@@ -1139,14 +1415,8 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                       }}
                       className="w-full py-2.5 rounded-lg border border-red-200 bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition flex items-center justify-center gap-1.5"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
                       出街预览（小红书样式）
                     </button>
-
-                    {/* Row 2: 3 status buttons */}
                     <div className="grid grid-cols-3 gap-2">
                       {STATUS_ACTIONS.map((action) => {
                         const active = topic.status === action.status
@@ -1163,10 +1433,8 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                         )
                       })}
                     </div>
-
-                    {/* Row 3: detail */}
                     <button
-                      onClick={() => setSheetTopic(topic)}
+                      onClick={() => setDetailTopic(topic)}
                       className="w-full py-2.5 rounded-lg border border-gray-300 text-sm text-gray-700 font-medium hover:bg-gray-50 transition"
                     >
                       查看详情 →
@@ -1175,7 +1443,6 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                 </div>
               </div>
 
-              {/* Navigation */}
               <div className="flex items-center justify-between mt-4">
                 <button
                   onClick={prev}
@@ -1186,20 +1453,17 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
-
-                {/* Dots */}
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   {topics.map((_, i) => (
                     <button
                       key={i}
                       onClick={() => setCurrent(i)}
                       className={`rounded-full transition-all ${
-                        i === current ? 'w-6 h-2.5 bg-brand-green' : 'w-2.5 h-2.5 bg-gray-300'
+                        i === current ? 'w-5 h-2 bg-brand-green' : 'w-2 h-2 bg-gray-300'
                       }`}
                     />
                   ))}
                 </div>
-
                 <button
                   onClick={next}
                   disabled={current === topics.length - 1}
@@ -1210,7 +1474,6 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                   </svg>
                 </button>
               </div>
-
               <p className="text-center text-xs text-gray-400 mt-2">
                 {current + 1} / {topics.length} · 左右滑动切换
               </p>
@@ -1219,8 +1482,12 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
         </div>
       </main>
 
-      {sheetTopic && (
-        <DetailSheet topic={sheetTopic} onClose={() => setSheetTopic(null)} />
+      {detailTopic && (
+        <XhsDetailPage
+          topic={detailTopic}
+          campaign={campaign}
+          onClose={() => setDetailTopic(null)}
+        />
       )}
 
       {previewTopic && (
@@ -1237,7 +1504,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
       )}
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-lg bg-gray-900 text-white text-sm shadow-xl animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-lg bg-gray-900 text-white text-sm shadow-xl">
           {toast}
         </div>
       )}
