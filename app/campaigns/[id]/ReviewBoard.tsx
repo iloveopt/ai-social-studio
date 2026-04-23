@@ -300,11 +300,14 @@ function XhsDetailPage({
   const savesRaw = mockSaves(topic) + (saved ? 1 : 0)
   const commentCount = mockCommentCount(topic, comments.length)
 
-  // 1-3 slides: photo (if any) → title → hook/thinking
+  // Has photo → only photo slide; otherwise fall back to title + optional hook
   const slides = useMemo(() => {
-    const s: Array<{ label: 'photo' | 'title' | 'hook'; text: string }> = []
-    if (topic.cover_image) s.push({ label: 'photo', text: topic.cover_image })
-    s.push({ label: 'title', text: topic.title })
+    if (topic.cover_image) {
+      return [{ label: 'photo' as const, text: topic.cover_image }]
+    }
+    const s: Array<{ label: 'title' | 'hook'; text: string }> = [
+      { label: 'title', text: topic.title },
+    ]
     const second = topic.hook || topic.thinking || ''
     if (second) s.push({ label: 'hook', text: second })
     return s
