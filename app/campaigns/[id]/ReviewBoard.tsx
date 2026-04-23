@@ -990,7 +990,7 @@ function XhsFeedCard({
       onClick={onOpen}
       className="group block w-full text-left bg-white"
     >
-      {/* Cover */}
+      {/* Cover — uniform layout regardless of cover_image */}
       <div
         className="relative w-full aspect-[3/4] rounded-lg overflow-hidden bg-gray-100"
         style={
@@ -1016,14 +1016,6 @@ function XhsFeedCard({
               className="absolute -bottom-6 -right-4 w-24 h-24 rounded-full opacity-30"
               style={{ background: p.accent }}
             />
-            <div className="absolute inset-0 flex items-center justify-center p-4 z-0">
-              <h3
-                className="text-gray-900 text-center text-[15px] font-black leading-[1.35] line-clamp-4"
-                style={{ textShadow: '0 1px 3px rgba(255,255,255,0.6)' }}
-              >
-                {topic.title}
-              </h3>
-            </div>
           </>
         )}
 
@@ -1040,11 +1032,18 @@ function XhsFeedCard({
             <CoverStatusBadge status={topic.status} />
           </div>
         )}
+
+        {/* Bottom title overlay — same on both image and gradient cards */}
+        <div className="absolute inset-x-0 bottom-0 z-10 pt-8 pb-2 px-2.5 bg-gradient-to-t from-black/70 via-black/30 to-transparent">
+          <h3 className="text-white text-[13px] font-bold leading-snug line-clamp-2 drop-shadow">
+            {topic.title}
+          </h3>
+        </div>
       </div>
 
       {/* Text area below cover */}
       <div className="pt-2 pb-1 px-0.5">
-        <p className="text-[14px] font-medium text-gray-800 leading-snug line-clamp-2">
+        <p className="text-[13px] text-gray-600 leading-snug line-clamp-2">
           {topic.hook}
         </p>
 
