@@ -100,7 +100,7 @@ export async function generateCoverImage(prompt: string): Promise<GenerateResult
 
 export function buildCoverPrompt(opts: {
   brand: string
-  ip: string
+  ip?: string
   title: string
   hook: string
   tone?: string
@@ -108,7 +108,8 @@ export function buildCoverPrompt(opts: {
   const { brand, ip, title, hook, tone } = opts
   return [
     `A cinematic, editorial-style 小红书 (Xiaohongshu) post cover, 3:4 vertical portrait.`,
-    `Context: ${brand} × ${ip} brand collaboration campaign.`,
+    `Brand: ${brand} (a global coffee brand).`,
+    ip ? `Optional context: ${ip} (use only if it naturally fits the topic).` : '',
     `Topic angle: ${title}`,
     `Emotional hook: ${hook}`,
     tone ? `Brand tone: ${tone}` : '',
@@ -116,10 +117,10 @@ export function buildCoverPrompt(opts: {
     `Visual direction:`,
     `- Real photography aesthetic (not illustration, not gradient), high-end magazine feel`,
     `- Warm cinematic lighting, shallow depth of field, film grain`,
-    `- Hero subject: a ${brand} takeaway coffee cup staged in a scene evoking the hook's mood`,
-    `- Supporting props and setting that echo ${ip}: office/fashion/cinema references, manhattan skyline, runway, designer handbag, laptop — pick whatever fits the hook best`,
+    `- Hero subject: a ${brand} takeaway coffee cup naturally placed in a scene that brings the topic to life`,
+    `- Setting / props chosen from the topic mood: morning commute, office desk, cozy home corner, weekend cafe, urban street, seasonal decor, friends gathering, etc. Pick whatever best matches the hook.`,
     `- Composition: off-center product, generous negative space (top or side) for text`,
-    `- Color palette: deep neutrals with one accent color, mood: classy, aspirational, 职场女性向`,
+    `- Color palette: deep neutrals with one accent color, mood: warm, aspirational, lifestyle`,
     `- DO NOT render any visible text, letters, logos or numbers anywhere in the image`,
     `- DO NOT use flat solid backgrounds, pastel gradients, or placeholder patterns`,
   ]

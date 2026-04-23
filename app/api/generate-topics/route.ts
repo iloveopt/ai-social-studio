@@ -107,14 +107,22 @@ async function generateTopics(params: {
   const { brand, ip, audience, goal, platforms, tone } = params
   const platformStr = platforms.join('、')
 
-  const userPrompt = `请为以下品牌联名Campaign生成5个社媒选题：
+  const userPrompt = `请为「${brand}」品牌生成 5 个社媒选题。
 
 品牌：${brand}
-联名IP：${ip}
+${ip ? `可参考的 IP / 季节性话题：${ip}（仅作为可选灵感之一，不强求每条都用）` : ''}
 目标人群：${audience}
 Campaign目标：${goal}
 主要平台：${platformStr}
 品牌语气：${tone}
+
+5 条选题请尽量覆盖不同切入角度，例如（不限于）：
+- 新品 / 季节限定 / 城市限定
+- 用户生活场景与情绪共鸣（早八、加班、周末、独处、社交等）
+- 节日 / 节气 / 热点事件
+- 跨界联名（IP / 艺术家 / 其他品牌，可以不同于上面给的 IP）
+- 产品工艺 / 原料故事 / 门店体验
+- UGC / 互动玩法 / 用户共创
 
 要求：
 1. 每个选题必须有强烈的「第一眼钩子」，标题要让人想点进去
@@ -122,6 +130,7 @@ Campaign目标：${goal}
 3. 选题思考要说清楚：切入点是什么、为什么这个人群会共鸣、传播机制是什么
 4. 参考案例要真实，不要编造不存在的数据
 5. 风格要接地气，像人写的，不像AI写的
+6. 5 条之间角度要明显有差异，不要全部都是同一个套路
 
 输出格式（严格JSON数组，5个元素）：
 [{

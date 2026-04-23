@@ -335,7 +335,7 @@ function XhsDetailPage({
                 {brandName}
               </p>
               <p className="text-[10px] text-gray-400 truncate leading-tight">
-                {campaign.ip_name} · 刚刚
+                品牌官方 · 刚刚
               </p>
             </div>
             <button
@@ -402,7 +402,7 @@ function XhsDetailPage({
                         {slide.label === 'title' ? (
                           <>
                             <p className="text-[11px] font-semibold text-gray-500 mb-3 tracking-[0.2em]">
-                              #{String(topic.seq_num).padStart(2, '0')} · {campaign.ip_name}
+                              #{String(topic.seq_num).padStart(2, '0')} · {campaign.brand_name}
                             </p>
                             <h2
                               className="text-gray-900 text-[22px] font-black leading-[1.3]"
@@ -465,10 +465,9 @@ function XhsDetailPage({
             {/* Hashtags */}
             <div className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[13px] text-[#3d7eff]">
               <span>#{brandName}</span>
-              <span>#{campaign.ip_name}</span>
               {campaign.tone && <span>#{campaign.tone}</span>}
               <span>#种草</span>
-              <span>#品牌联名</span>
+              <span>#内容营销</span>
             </div>
 
             <button
@@ -1024,7 +1023,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
               </div>
               <div className="min-w-0">
                 <p className="text-[13px] font-bold text-gray-900 leading-tight truncate">
-                  {campaign.brand_name} × {campaign.ip_name}
+                  {campaign.brand_name}
                 </p>
                 <p className="text-[10px] text-gray-400 leading-tight">
                   {topics.length} 条选题 · {counts.approved} 通过

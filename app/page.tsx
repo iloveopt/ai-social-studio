@@ -100,7 +100,7 @@ export default function Home() {
           <p className="text-sm text-gray-500 tracking-wide">AI Social Studio</p>
           <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">星巴克</h1>
           <p className="text-base text-gray-400 max-w-md mx-auto leading-relaxed">
-            × 穿Prada的女魔头2 联名 Campaign
+            内容选题 · 一站式 AI 创意工作台
           </p>
         </div>
 
