@@ -252,37 +252,47 @@ export async function POST() {
   try {
     const supabase = createServiceClient()
 
-    // 1. 查是否已存在
+    // 1. 查或创建 campaign
     const { data: existing } = await supabase
       .from('campaigns')
       .select('id')
       .eq('brand_name', '星巴克')
       .maybeSingle()
 
+    let campaignId: string
     if (existing?.id) {
-      return Response.json({ campaignId: existing.id })
+      campaignId = existing.id
+    } else {
+      const { data: campaign, error: campError } = await supabase
+        .from('campaigns')
+        .insert({
+          brand_name: '星巴克',
+          ip_name: '穿Prada的女魔头2',
+          target_audience: '职场女性25-38岁',
+          campaign_goal: '联名新品推广+品牌情感联结',
+          platforms: ['xhs', 'douyin'],
+          tone: '情感共鸣',
+          status: 'active',
+        })
+        .select('id')
+        .single()
+
+      if (campError || !campaign) {
+        return Response.json({ error: campError?.message ?? '创建 campaign 失败' }, { status: 500 })
+      }
+      campaignId = campaign.id
     }
 
-    // 2. 创建 campaign
-    const { data: campaign, error: campError } = await supabase
-      .from('campaigns')
-      .insert({
-        brand_name: '星巴克',
-        ip_name: '穿Prada的女魔头2',
-        target_audience: '职场女性25-38岁',
-        campaign_goal: '联名新品推广+品牌情感联结',
-        platforms: ['xhs', 'douyin'],
-        tone: '情感共鸣',
-        status: 'active',
-      })
-      .select('id')
-      .single()
+    // 2. 已有未删除的 topics 就直接返回；否则补种
+    const { count: topicCount } = await supabase
+      .from('topics')
+      .select('id', { count: 'exact', head: true })
+      .eq('campaign_id', campaignId)
+      .is('deleted_at', null)
 
-    if (campError || !campaign) {
-      return Response.json({ error: campError?.message ?? '创建 campaign 失败' }, { status: 500 })
+    if (topicCount && topicCount > 0) {
+      return Response.json({ campaignId })
     }
-
-    const campaignId = campaign.id
 
     // 3. 插入 5 个 topics + 每个 5 条 ai_evaluations
     for (let i = 0; i < SEED_TOPICS.length; i++) {
