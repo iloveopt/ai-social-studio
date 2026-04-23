@@ -283,20 +283,19 @@ export async function POST() {
       campaignId = campaign.id
     }
 
-    // 2. 已有未删除的 topics 就直接返回；否则补种
-    const { count: topicCount } = await supabase
+    // 2. 查已有的 seq_num，只补种缺失的
+    const { data: existingTopics } = await supabase
       .from('topics')
-      .select('id', { count: 'exact', head: true })
+      .select('seq_num')
       .eq('campaign_id', campaignId)
       .is('deleted_at', null)
 
-    if (topicCount && topicCount > 0) {
-      return Response.json({ campaignId })
-    }
+    const existingSeqs = new Set((existingTopics ?? []).map((t) => t.seq_num))
 
-    // 3. 插入 5 个 topics + 每个 5 条 ai_evaluations
     for (let i = 0; i < SEED_TOPICS.length; i++) {
       const t = SEED_TOPICS[i]
+      if (existingSeqs.has(t.seq_num)) continue
+
       const { data: topicRow, error: topicError } = await supabase
         .from('topics')
         .insert({
@@ -316,7 +315,11 @@ export async function POST() {
         .single()
 
       if (topicError || !topicRow) {
-        return Response.json({ error: topicError?.message ?? '创建 topic 失败' }, { status: 500 })
+        console.error('[seed-demo] topic insert failed', { seq_num: t.seq_num, error: topicError })
+        return Response.json(
+          { error: topicError?.message ?? '创建 topic 失败', failedAt: t.seq_num },
+          { status: 500 }
+        )
       }
 
       const evalRows = EVAL_MATRIX.map((judge, judgeIdx) => ({
@@ -331,7 +334,8 @@ export async function POST() {
 
       const { error: evalError } = await supabase.from('ai_evaluations').insert(evalRows)
       if (evalError) {
-        return Response.json({ error: evalError.message }, { status: 500 })
+        console.error('[seed-demo] eval insert failed', { seq_num: t.seq_num, error: evalError })
+        return Response.json({ error: evalError.message, failedAt: t.seq_num }, { status: 500 })
       }
     }
 
