@@ -313,7 +313,10 @@ function XhsDetailPage({
     <div className="fixed inset-0 z-50 flex justify-center bg-gray-100">
       <div className="w-full max-w-[390px] min-h-screen bg-white relative shadow-[0_0_24px_rgba(0,0,0,0.08)] flex flex-col">
         {/* Top bar */}
-        <header className="flex-shrink-0 flex items-center gap-2 px-3 py-2.5 bg-white border-b border-gray-50">
+        <header
+          className="flex-shrink-0 flex items-center gap-2 px-3 py-2.5 bg-white border-b border-gray-50"
+          style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}
+        >
           <button
             onClick={onClose}
             className="w-8 h-8 -ml-1 flex items-center justify-center text-gray-800 hover:bg-gray-50 rounded-full"
@@ -1038,7 +1041,10 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
   return (
     <div className="flex flex-col min-h-screen bg-white">
         {/* XHS-style top bar */}
-        <header className="flex-shrink-0 sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-50">
+        <header
+          className="flex-shrink-0 sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-50"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        >
           <div className="px-3 py-2.5 flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center text-white font-black text-[13px] flex-shrink-0">
