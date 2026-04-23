@@ -670,7 +670,7 @@ function PlanningDrawer({ topic, onClose }: { topic: TopicWithEvals; onClose: ()
   return (
     <div className="fixed inset-0 z-[60] flex justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full max-w-[390px] mt-auto bg-white rounded-t-2xl max-h-[85vh] flex flex-col shadow-2xl">
+      <div className="relative w-full max-w-[390px] mt-auto bg-white rounded-t-2xl h-[92vh] flex flex-col shadow-2xl">
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-gray-200 rounded-full" />
         </div>
