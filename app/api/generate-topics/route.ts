@@ -2,20 +2,71 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { NextRequest } from 'next/server'
 import { claudeComplete } from '@/lib/anthropic-client'
 
-// 两次 Claude 调用 (生成 + 评审) 合计可能 15-30s，需要扩大 Vercel 超时
+// 生成是真实 Claude 调用 (~10-20s)；评委打分 demo 阶段 mock 即可
 export const maxDuration = 60
+
+const JUDGES: { name: string; desc: string; emoji: string; quotes: string[]; verdicts: string[] }[] = [
+  {
+    name: '小林',
+    desc: '25岁·运营打工人',
+    emoji: '😤',
+    quotes: ['共鸣感拉满', '朋友圈必刷', '打工人狂喜', '太能懂了', '帮我说了'],
+    verdicts: ['强推', '共鸣型', '打工人向', '情绪到位', '可落地'],
+  },
+  {
+    name: '王女士',
+    desc: '32岁·职场精英',
+    emoji: '👩‍💼',
+    quotes: ['调性在线', '可品可读', '品牌感够', '口碑可期', '稳中有新意'],
+    verdicts: ['品牌向', '安全牌', '口碑型', '质感足', '可放心推'],
+  },
+  {
+    name: 'Mia',
+    desc: '时尚KOL',
+    emoji: '🎨',
+    quotes: ['画面抓人', '视觉有记忆点', 'KOL 愿意接', '拍着爽', '构图可玩'],
+    verdicts: ['视觉型', 'KOL友好', '可延展', '有潜力', '颜值在线'],
+  },
+  {
+    name: '沈浩',
+    desc: '创意总监',
+    emoji: '👨‍💻',
+    quotes: ['战略清晰', '切入精准', '钩子有张力', '执行路径顺', '有复用空间'],
+    verdicts: ['战略型', '执行稳', '可复用', '结构好', '思路清'],
+  },
+  {
+    name: 'Lily',
+    desc: '大学生·Z世代',
+    emoji: '🎓',
+    quotes: ['Z世代买单', '我会转发', '梗够新', '同学群必炸', '青春共鸣'],
+    verdicts: ['裂变强', 'Z世代向', '梗到位', '社交属性足', '年轻化'],
+  },
+]
+
+function pick<T>(arr: T[], seed: number): T {
+  return arr[Math.abs(seed) % arr.length]
+}
+
+function mockEvals(topicIndex: number, title: string): RawEval[] {
+  const seed = (title.length + topicIndex * 7) * 13
+  return JUDGES.map((j, idx) => {
+    // 3.8–5.0 之间以 0.1 步长抖动，保证看上去真实
+    const raw = 3.8 + ((seed + idx * 11) % 13) * 0.1
+    const score = Math.round(raw * 10) / 10
+    return {
+      name: j.name,
+      desc: j.desc,
+      emoji: j.emoji,
+      score,
+      quote: pick(j.quotes, seed + idx),
+      verdict: pick(j.verdicts, seed + idx * 3),
+    }
+  })
+}
 
 const TOPIC_SYSTEM_PROMPT = `你是一位资深中国社交媒体内容策划总监，有15年品牌联名Campaign经验。
 你擅长洞察中国消费者心理，熟悉小红书、抖音、微博的内容传播规律。
 你的选题风格：接地气、有共鸣、有传播钩子，不说废话。`
-
-const EVAL_SYSTEM_PROMPT = `你是5位社媒内容专家组成的评审团，需要用各自固定的人设口吻对选题打分。
-评审专家（固定角色，每次必须用这5位）：
-- 小林（😤）：25岁运营打工人，关注共鸣感和UGC传播
-- 王女士（👩‍💼）：32岁职场精英，关注品质感和口碑传播
-- Mia（🎨）：时尚KOL，关注视觉表现和KOL传播力
-- 沈浩（👨‍💻）：创意总监，关注战略价值和执行可行性
-- Lily（🎓）：大学生Z世代，关注年轻感和社交裂变`
 
 interface RawTopic {
   title: string
@@ -94,42 +145,6 @@ Campaign目标：${goal}
   return JSON.parse(extractJsonArray(content)) as RawTopic[]
 }
 
-async function evaluateTopicsBatch(topics: RawTopic[]): Promise<RawEval[][]> {
-  const topicsJson = JSON.stringify(
-    topics.map((t, i) => ({ idx: i + 1, title: t.title, hook: t.hook })),
-    null,
-    2
-  )
-
-  const userPrompt = `下面有 ${topics.length} 个选题，请以5位评委的身份分别对每个选题打分。
-
-选题列表：
-${topicsJson}
-
-对每个选题，5位专家各给出：
-- score：0.0-5.0分（精确到0.5分）
-- quote：15字以内的点评（要有个性，符合各自角色）
-- verdict：简短标签（如"强推""需确认""品牌向"）
-
-输出格式（严格JSON，外层是数组，对应每个选题；内层是5个评委结果）：
-[[评委1结果, 评委2结果, 评委3结果, 评委4结果, 评委5结果], ...]
-
-每个评委结果：{"name": "小林", "emoji": "😤", "desc": "25岁·运营打工人", "score": 4.5, "quote": "...", "verdict": "..."}
-
-只输出JSON。`
-
-  const content = await claudeComplete({
-    system: EVAL_SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userPrompt }],
-    max_tokens: 4000,
-  })
-  const parsed = JSON.parse(extractJsonArray(content)) as RawEval[][]
-  if (!Array.isArray(parsed) || parsed.length !== topics.length) {
-    throw new Error('AI 评审返回数量不匹配')
-  }
-  return parsed
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -152,18 +167,15 @@ export async function POST(request: NextRequest) {
       0
     )
 
-    // Generate 5 topics
+    // Generate 5 topics（真实 Claude 调用）
     const rawTopics = await generateTopics({ brand, ip, audience, goal, platforms, tone })
 
-    // Evaluate all topics in a single batched call
-    const evalResults = await evaluateTopicsBatch(rawTopics)
-
-    // Insert topics + evaluations
+    // Insert topics + mock evaluations（Demo 阶段评委打分 mock 省一次 Claude）
     const topicIds: string[] = []
 
     for (let i = 0; i < rawTopics.length; i++) {
       const raw = rawTopics[i]
-      const evals = evalResults[i] ?? []
+      const evals = mockEvals(i, raw.title)
       const avgScore = evals.length
         ? evals.reduce((sum, e) => sum + (e.score ?? 0), 0) / evals.length
         : 0
