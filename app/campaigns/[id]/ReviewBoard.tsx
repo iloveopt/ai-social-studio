@@ -356,9 +356,9 @@ function XhsDetailPage({
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto pb-16">
-          {/* Cover image (swipeable) */}
+          {/* Cover image (swipeable) — 3:4 匹配 nano-banana 竖版输出，避免 object-cover 裁切 */}
           <div
-            className="relative w-full aspect-[4/3] overflow-hidden select-none"
+            className="relative w-full aspect-[3/4] overflow-hidden select-none bg-black"
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
           >
@@ -493,7 +493,12 @@ function XhsDetailPage({
               共 <span className="font-semibold text-gray-700">{commentCount}</span> 条评论
             </p>
             {comments.length === 0 ? (
-              <p className="text-[13px] text-gray-400 text-center py-6">暂时还没有评论，快来抢沙发～</p>
+              <div className="flex flex-col items-center justify-center py-10 gap-2">
+                <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-xl">
+                  💬
+                </div>
+                <p className="text-[13px] text-gray-400">还没有人评论，来抢沙发～</p>
+              </div>
             ) : (
               <div className="space-y-4">
                 {comments.map((c, i) => {
