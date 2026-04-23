@@ -29,6 +29,10 @@ export async function generateCoverImage(prompt: string): Promise<string | null>
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseModalities: ['IMAGE'],
+          imageConfig: { aspectRatio: '3:4' },
+        },
       }),
     })
 
@@ -64,16 +68,21 @@ export function buildCoverPrompt(opts: {
 }): string {
   const { brand, ip, title, hook, tone } = opts
   return [
-    `生成一张小红书风格的品牌联名海报封面图（3:4 竖版），用于 ${brand} × ${ip} 联名 Campaign。`,
-    `选题标题：${title}`,
-    `核心文案：${hook}`,
-    tone ? `品牌语气：${tone}` : '',
-    `画面要求：`,
-    `- 真实摄影感或高质量插画，不要渐变占位背景`,
-    `- 主体聚焦一杯星巴克咖啡，搭配与${ip}相关的情境道具/场景`,
-    `- 构图留白，上方或中部留文字位置`,
-    `- 风格：时尚、有电影感、色调高级`,
-    `- 不要生成任何文字/Logo（防止错字）`,
+    `A cinematic, editorial-style 小红书 (Xiaohongshu) post cover, 3:4 vertical portrait.`,
+    `Context: ${brand} × ${ip} brand collaboration campaign.`,
+    `Topic angle: ${title}`,
+    `Emotional hook: ${hook}`,
+    tone ? `Brand tone: ${tone}` : '',
+    ``,
+    `Visual direction:`,
+    `- Real photography aesthetic (not illustration, not gradient), high-end magazine feel`,
+    `- Warm cinematic lighting, shallow depth of field, film grain`,
+    `- Hero subject: a ${brand} takeaway coffee cup staged in a scene evoking the hook's mood`,
+    `- Supporting props and setting that echo ${ip}: office/fashion/cinema references, manhattan skyline, runway, designer handbag, laptop — pick whatever fits the hook best`,
+    `- Composition: off-center product, generous negative space (top or side) for text`,
+    `- Color palette: deep neutrals with one accent color, mood: classy, aspirational, 职场女性向`,
+    `- DO NOT render any visible text, letters, logos or numbers anywhere in the image`,
+    `- DO NOT use flat solid backgrounds, pastel gradients, or placeholder patterns`,
   ]
     .filter(Boolean)
     .join('\n')

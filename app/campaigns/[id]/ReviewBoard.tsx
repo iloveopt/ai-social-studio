@@ -1109,6 +1109,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [regenCovers, setRegenCovers] = useState(false)
 
   async function handleShare() {
     try {
@@ -1118,6 +1119,27 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
       setToast('复制失败')
     }
     setTimeout(() => setToast(null), 2000)
+  }
+
+  async function handleRegenCovers() {
+    if (regenCovers) return
+    setRegenCovers(true)
+    setToast('正在重新生成封面，可能需要 20-30s…')
+    try {
+      const res = await fetch('/api/regen-covers', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        setToast(`已更新 ${data.regenerated}/${data.total} 张封面`)
+        setTimeout(() => window.location.reload(), 1200)
+      } else {
+        setToast(data.error ?? '生成失败')
+      }
+    } catch {
+      setToast('生成失败')
+    } finally {
+      setRegenCovers(false)
+      setTimeout(() => setToast(null), 3000)
+    }
   }
 
   const touchStartX = useRef<number | null>(null)
@@ -1225,6 +1247,22 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                 <span className="hidden xs:inline">策划</span>
               </button>
               <InspirationUploader campaignId={campaign.id} />
+              <button
+                onClick={handleRegenCovers}
+                disabled={regenCovers}
+                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                aria-label="重新生成封面"
+                title="重新生成封面"
+              >
+                {regenCovers ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <span className="text-sm">🎨</span>
+                )}
+              </button>
               <button
                 onClick={handleShare}
                 className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50"
