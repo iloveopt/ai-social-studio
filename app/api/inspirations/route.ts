@@ -1,6 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextRequest } from 'next/server'
-import { anthropicClient, CLAUDE_MODEL } from '@/lib/anthropic-client'
+import { claudeComplete, type ContentBlock } from '@/lib/anthropic-client'
 import type { InspirationSuggestion } from '@/types'
 
 const MAX_SIZE = 5 * 1024 * 1024
@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
 
     const arrayBuffer = await image.arrayBuffer()
     const base64 = Buffer.from(arrayBuffer).toString('base64')
-    const mime = image.type || 'image/jpeg'
+    const rawMime = image.type || 'image/jpeg'
+    const mime: 'image/jpeg' | 'image/png' = rawMime === 'image/png' ? 'image/png' : 'image/jpeg'
     const dataUri = `data:${mime};base64,${base64}`
 
     const platforms = Array.isArray(campaign.platforms)
@@ -78,22 +79,17 @@ export async function POST(request: NextRequest) {
 
 只输出JSON。`
 
-    const response = await anthropicClient.chat.completions.create({
-      model: CLAUDE_MODEL,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: dataUri } },
-            { type: 'text', text: userText },
-          ],
-        },
-      ],
+    const content: ContentBlock[] = [
+      { type: 'image', source: { type: 'base64', media_type: mime, data: base64 } },
+      { type: 'text', text: userText },
+    ]
+
+    const raw = await claudeComplete({
+      messages: [{ role: 'user', content }],
       max_tokens: 1000,
     })
 
-    const content = response.choices[0]?.message?.content ?? ''
-    const parsed = JSON.parse(extractJsonObject(content)) as AnalyzeResult
+    const parsed = JSON.parse(extractJsonObject(raw)) as AnalyzeResult
 
     const { data: inserted, error: insErr } = await supabase
       .from('inspirations')
