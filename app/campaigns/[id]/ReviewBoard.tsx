@@ -311,10 +311,10 @@ function XhsDetailPage({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-center bg-gray-100">
-      <div className="w-full max-w-[390px] min-h-screen bg-white relative shadow-[0_0_24px_rgba(0,0,0,0.08)] flex flex-col">
-        {/* Top bar */}
+      <div className="w-full max-w-[390px] h-full bg-white relative shadow-[0_0_24px_rgba(0,0,0,0.08)] flex flex-col">
+        {/* Top bar — 与 feed 顶栏统一样式 */}
         <header
-          className="flex-shrink-0 flex items-center gap-2 px-3 py-2.5 bg-white border-b border-gray-50"
+          className="flex-shrink-0 sticky top-0 z-30 flex items-center gap-2 px-3 py-2.5 bg-white/95 backdrop-blur-md border-b border-gray-100"
           style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}
         >
           <button
@@ -1042,7 +1042,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
     <div className="flex flex-col min-h-screen bg-white">
         {/* XHS-style top bar */}
         <header
-          className="flex-shrink-0 sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-50"
+          className="flex-shrink-0 sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100"
           style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
           <div className="px-3 py-2.5 flex items-center justify-between gap-2">
