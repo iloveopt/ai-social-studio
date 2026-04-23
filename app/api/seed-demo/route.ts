@@ -1,4 +1,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import { buildCoverPrompt, generateCoverImage } from '@/lib/nano-banana'
+
+// Allow up to 60s for parallel cover generation on Vercel
+export const maxDuration = 60
 
 interface SeedTopic {
   seq_num: number
@@ -291,6 +295,7 @@ export async function POST() {
       .is('deleted_at', null)
 
     const existingSeqs = new Set((existingTopics ?? []).map((t) => t.seq_num))
+    const newlyInserted: { topicId: string; seed: SeedTopic }[] = []
 
     for (let i = 0; i < SEED_TOPICS.length; i++) {
       const t = SEED_TOPICS[i]
@@ -322,6 +327,8 @@ export async function POST() {
         )
       }
 
+      newlyInserted.push({ topicId: topicRow.id, seed: t })
+
       const evalRows = EVAL_MATRIX.map((judge, judgeIdx) => ({
         topic_id: topicRow.id,
         persona_name: judge.name,
@@ -337,6 +344,24 @@ export async function POST() {
         console.error('[seed-demo] eval insert failed', { seq_num: t.seq_num, error: evalError })
         return Response.json({ error: evalError.message, failedAt: t.seq_num }, { status: 500 })
       }
+    }
+
+    // 4. 并行给新插入的 topic 生成封面（失败就留 null，前端有渐变兜底）
+    if (newlyInserted.length > 0 && process.env.NANO_BANANA_API_KEY) {
+      await Promise.allSettled(
+        newlyInserted.map(async ({ topicId, seed }) => {
+          const prompt = buildCoverPrompt({
+            brand: '星巴克',
+            ip: '穿Prada的女魔头2',
+            title: seed.title,
+            hook: seed.hook,
+            tone: '情感共鸣',
+          })
+          const dataUri = await generateCoverImage(prompt)
+          if (!dataUri) return
+          await supabase.from('topics').update({ cover_image: dataUri }).eq('id', topicId)
+        })
+      )
     }
 
     return Response.json({ campaignId })

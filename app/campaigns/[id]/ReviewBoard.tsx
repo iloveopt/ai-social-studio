@@ -965,22 +965,44 @@ function XhsFeedCard({
     >
       {/* Cover */}
       <div
-        className="relative w-full aspect-[3/4] rounded-lg overflow-hidden"
-        style={{ background: `linear-gradient(135deg, ${p.bg} 0%, ${p.accent} 100%)` }}
+        className="relative w-full aspect-[3/4] rounded-lg overflow-hidden bg-gray-100"
+        style={
+          topic.cover_image
+            ? undefined
+            : { background: `linear-gradient(135deg, ${p.bg} 0%, ${p.accent} 100%)` }
+        }
       >
-        {/* Decorative blobs */}
-        <div
-          className="absolute -top-4 -left-4 w-20 h-20 rounded-full opacity-40"
-          style={{ background: p.accent }}
-        />
-        <div
-          className="absolute -bottom-6 -right-4 w-24 h-24 rounded-full opacity-30"
-          style={{ background: p.accent }}
-        />
+        {topic.cover_image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={topic.cover_image}
+            alt={topic.title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <>
+            <div
+              className="absolute -top-4 -left-4 w-20 h-20 rounded-full opacity-40"
+              style={{ background: p.accent }}
+            />
+            <div
+              className="absolute -bottom-6 -right-4 w-24 h-24 rounded-full opacity-30"
+              style={{ background: p.accent }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center p-4 z-0">
+              <h3
+                className="text-gray-900 text-center text-[15px] font-black leading-[1.35] line-clamp-4"
+                style={{ textShadow: '0 1px 3px rgba(255,255,255,0.6)' }}
+              >
+                {topic.title}
+              </h3>
+            </div>
+          </>
+        )}
 
         {/* Seq number */}
         <div className="absolute top-2 left-2 z-10">
-          <span className="text-[10px] font-bold text-gray-500 tabular-nums bg-white/70 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
+          <span className="text-[10px] font-bold text-gray-700 tabular-nums bg-white/80 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
             #{String(topic.seq_num).padStart(2, '0')}
           </span>
         </div>
@@ -991,16 +1013,6 @@ function XhsFeedCard({
             <CoverStatusBadge status={topic.status} />
           </div>
         )}
-
-        {/* Title overlay */}
-        <div className="absolute inset-0 flex items-center justify-center p-4 z-0">
-          <h3
-            className="text-gray-900 text-center text-[15px] font-black leading-[1.35] line-clamp-4"
-            style={{ textShadow: '0 1px 3px rgba(255,255,255,0.6)' }}
-          >
-            {topic.title}
-          </h3>
-        </div>
       </div>
 
       {/* Text area below cover */}

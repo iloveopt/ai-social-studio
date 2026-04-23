@@ -53,6 +53,7 @@ export interface Topic {
   persona: Persona | null
   status: string
   ai_avg_score: number | null
+  cover_image: string | null
   deleted_at: string | null
 }
 

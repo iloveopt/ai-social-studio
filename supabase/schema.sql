@@ -34,6 +34,7 @@ create table if not exists topics (
   persona jsonb default '{}',
   status text not null default 'pending' check (status in ('pending','approved','discussing','rejected')),
   ai_avg_score numeric(3,1),
+  cover_image text,
   deleted_at timestamptz,
   unique(campaign_id, seq_num)
 );
