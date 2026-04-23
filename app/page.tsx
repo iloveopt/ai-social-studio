@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type Platform = {
   key: 'xhs' | 'douyin' | 'xlb'
@@ -44,9 +44,29 @@ export default function Home() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [xhsCampaignId, setXhsCampaignId] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/seed-demo', { method: 'POST' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled || !data?.campaignId) return
+        setXhsCampaignId(data.campaignId)
+        router.prefetch(`/campaigns/${data.campaignId}`)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [router])
 
   async function openXhsCampaign() {
     if (loading) return
+    if (xhsCampaignId) {
+      router.push(`/campaigns/${xhsCampaignId}`)
+      return
+    }
     setLoading(true)
     try {
       const res = await fetch('/api/seed-demo', { method: 'POST' })
