@@ -352,17 +352,6 @@ function XhsDetailPage({
               {followed ? '已关注' : '+ 关注'}
             </button>
           </div>
-          <button
-            className="w-8 h-8 flex items-center justify-center text-gray-700 hover:bg-gray-50 rounded-full flex-shrink-0"
-            aria-label="分享"
-            onClick={async () => {
-              try { await navigator.clipboard.writeText(window.location.href) } catch {}
-            }}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12v.01M4 6v.01M4 18v.01M10 6h10M10 12h10M10 18h10" />
-            </svg>
-          </button>
         </header>
 
         {/* Scrollable content */}
@@ -965,16 +954,6 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
     }
   }, [campaign.id])
 
-  async function handleShare() {
-    try {
-      await navigator.clipboard.writeText(window.location.href)
-      setToast('链接已复制')
-    } catch {
-      setToast('复制失败')
-    }
-    setTimeout(() => setToast(null), 2000)
-  }
-
   async function updateStatus(topicId: string, status: string) {
     await fetch(`/api/topics/${topicId}/status`, {
       method: 'PATCH',
@@ -1061,15 +1040,6 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
               <InspirationUploader campaignId={campaign.id} />
-              <button
-                onClick={handleShare}
-                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50"
-                aria-label="分享"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-              </button>
               <button
                 onClick={handleGenerate}
                 disabled={generating}
