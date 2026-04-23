@@ -1061,15 +1061,6 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
               </button>
             </div>
           </div>
-          {/* XHS-like tabs */}
-          <div className="flex items-center justify-center gap-5 px-4 pb-2 text-[13px]">
-            <span className="text-gray-400">关注</span>
-            <span className="font-bold text-gray-900 relative">
-              发现
-              <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-[3px] rounded-full bg-red-500" />
-            </span>
-            <span className="text-gray-400">本地</span>
-          </div>
         </header>
 
         <main className="flex-1">
