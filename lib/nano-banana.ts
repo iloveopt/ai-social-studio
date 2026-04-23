@@ -23,54 +23,79 @@ export interface GenerateResult {
   error?: string
 }
 
+const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504])
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
 export async function generateCoverImage(prompt: string): Promise<GenerateResult> {
   const key = process.env.NANO_BANANA_API_KEY
   if (!key) return { dataUri: null, error: 'NANO_BANANA_API_KEY 未配置' }
   const url = `${process.env.NANO_BANANA_API_URL ?? DEFAULT_URL}?key=${encodeURIComponent(key)}`
 
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseModalities: ['TEXT', 'IMAGE'],
-        },
-      }),
-    })
+  const body = JSON.stringify({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      responseModalities: ['TEXT', 'IMAGE'],
+    },
+  })
 
-    const text = await res.text()
-    if (!res.ok) {
-      console.error('[nano-banana]', res.status, text.slice(0, 600))
-      return { dataUri: null, error: `HTTP ${res.status}: ${text.slice(0, 200)}` }
-    }
+  const MAX_ATTEMPTS = 3
+  let lastError = ''
 
-    let data: GeminiResponse
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      data = JSON.parse(text) as GeminiResponse
-    } catch {
-      return { dataUri: null, error: `non-JSON response: ${text.slice(0, 200)}` }
-    }
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+      })
 
-    if (data.error) {
-      return { dataUri: null, error: data.error.message ?? 'gemini error' }
-    }
-
-    const parts = data.candidates?.[0]?.content?.parts ?? []
-    for (const p of parts) {
-      const inline = p.inlineData ?? p.inline_data
-      if (inline?.data) {
-        const mime = inline.mimeType ?? inline.mime_type ?? 'image/png'
-        return { dataUri: `data:${mime};base64,${inline.data}` }
+      const text = await res.text()
+      if (!res.ok) {
+        lastError = `HTTP ${res.status}: ${text.slice(0, 200)}`
+        console.error('[nano-banana]', `attempt ${attempt}/${MAX_ATTEMPTS}`, res.status, text.slice(0, 400))
+        if (RETRYABLE_STATUS.has(res.status) && attempt < MAX_ATTEMPTS) {
+          await sleep(1000 * 2 ** (attempt - 1))
+          continue
+        }
+        return { dataUri: null, error: lastError }
       }
+
+      let data: GeminiResponse
+      try {
+        data = JSON.parse(text) as GeminiResponse
+      } catch {
+        return { dataUri: null, error: `non-JSON response: ${text.slice(0, 200)}` }
+      }
+
+      if (data.error) {
+        return { dataUri: null, error: data.error.message ?? 'gemini error' }
+      }
+
+      const parts = data.candidates?.[0]?.content?.parts ?? []
+      for (const p of parts) {
+        const inline = p.inlineData ?? p.inline_data
+        if (inline?.data) {
+          const mime = inline.mimeType ?? inline.mime_type ?? 'image/png'
+          return { dataUri: `data:${mime};base64,${inline.data}` }
+        }
+      }
+      console.error('[nano-banana] no inlineData', JSON.stringify(data).slice(0, 600))
+      return { dataUri: null, error: `无图像返回：${JSON.stringify(data).slice(0, 200)}` }
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : 'fetch failed'
+      console.error('[nano-banana] fetch error', `attempt ${attempt}/${MAX_ATTEMPTS}`, err)
+      if (attempt < MAX_ATTEMPTS) {
+        await sleep(1000 * 2 ** (attempt - 1))
+        continue
+      }
+      return { dataUri: null, error: lastError }
     }
-    console.error('[nano-banana] no inlineData', JSON.stringify(data).slice(0, 600))
-    return { dataUri: null, error: `无图像返回：${JSON.stringify(data).slice(0, 200)}` }
-  } catch (err) {
-    console.error('[nano-banana] fetch failed', err)
-    return { dataUri: null, error: err instanceof Error ? err.message : 'fetch failed' }
   }
+
+  return { dataUri: null, error: lastError || 'all retries failed' }
 }
 
 export function buildCoverPrompt(opts: {
