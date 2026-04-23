@@ -979,8 +979,16 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
         }),
       })
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error ?? '生成失败')
+        // 响应可能是 JSON 或 HTML（Vercel 504 超时页），只读一次
+        const text = await res.text().catch(() => '')
+        let msg = `HTTP ${res.status}`
+        try {
+          const data = JSON.parse(text) as { error?: string }
+          if (data?.error) msg = data.error
+        } catch {
+          if (text) msg = `${msg}: ${text.slice(0, 120)}`
+        }
+        throw new Error(msg)
       }
       const supabase = createClient()
       const { data: topicsData } = await supabase

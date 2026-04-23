@@ -2,6 +2,9 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { NextRequest } from 'next/server'
 import { claudeComplete } from '@/lib/anthropic-client'
 
+// 两次 Claude 调用 (生成 + 评审) 合计可能 15-30s，需要扩大 Vercel 超时
+export const maxDuration = 60
+
 const TOPIC_SYSTEM_PROMPT = `你是一位资深中国社交媒体内容策划总监，有15年品牌联名Campaign经验。
 你擅长洞察中国消费者心理，熟悉小红书、抖音、微博的内容传播规律。
 你的选题风格：接地气、有共鸣、有传播钩子，不说废话。`
