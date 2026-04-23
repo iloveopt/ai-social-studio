@@ -152,8 +152,7 @@ function useRealtimeComments(topicId: string) {
   return comments
 }
 
-function PlanningCommentsTab({ topicId }: { topicId: string }) {
-  const comments = useRealtimeComments(topicId)
+function PlanningCommentsTab({ topicId, comments }: { topicId: string; comments: Comment[] }) {
   const [name, setName] = useState('')
   const [role, setRole] = useState('')
   const [text, setText] = useState('')
@@ -383,6 +382,8 @@ function XhsDetailPage({
                     <img
                       src={slide.text}
                       alt={topic.title}
+                      loading="eager"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -613,6 +614,7 @@ function XhsDetailPage({
       {showPlanDrawer && (
         <PlanningDrawer
           topic={topic}
+          comments={comments}
           onClose={() => setShowPlanDrawer(false)}
           onStatusChange={onStatusChange}
         />
@@ -624,10 +626,12 @@ function XhsDetailPage({
 /* Planning drawer overlays on top of the XHS detail — for users who want the AI review context */
 function PlanningDrawer({
   topic,
+  comments,
   onClose,
   onStatusChange,
 }: {
   topic: TopicWithEvals
+  comments: Comment[]
   onClose: () => void
   onStatusChange: (topicId: string, status: string) => void
 }) {
@@ -749,7 +753,7 @@ function PlanningDrawer({
               )}
             </div>
           )}
-          {tab === 'comments' && <PlanningCommentsTab topicId={topic.id} />}
+          {tab === 'comments' && <PlanningCommentsTab topicId={topic.id} comments={comments} />}
         </div>
 
         {/* Status decision footer — 通过 / 讨论 / 拒绝 */}
@@ -818,6 +822,8 @@ function XhsFeedCard({
           <img
             src={topic.cover_image}
             alt={topic.title}
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (
