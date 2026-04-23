@@ -365,7 +365,7 @@ export async function POST() {
               hook: seed.hook,
               tone: '情感共鸣',
             })
-            const dataUri = await generateCoverImage(prompt)
+            const { dataUri } = await generateCoverImage(prompt)
             if (!dataUri) return
             await supabase.from('topics').update({ cover_image: dataUri }).eq('id', row.id)
           })

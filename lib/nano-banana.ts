@@ -18,9 +18,14 @@ interface GeminiResponse {
   error?: { message?: string; code?: number }
 }
 
-export async function generateCoverImage(prompt: string): Promise<string | null> {
+export interface GenerateResult {
+  dataUri: string | null
+  error?: string
+}
+
+export async function generateCoverImage(prompt: string): Promise<GenerateResult> {
   const key = process.env.NANO_BANANA_API_KEY
-  if (!key) return null
+  if (!key) return { dataUri: null, error: 'NANO_BANANA_API_KEY 未配置' }
   const url = `${process.env.NANO_BANANA_API_URL ?? DEFAULT_URL}?key=${encodeURIComponent(key)}`
 
   try {
@@ -30,32 +35,41 @@ export async function generateCoverImage(prompt: string): Promise<string | null>
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
-          responseModalities: ['IMAGE'],
-          imageConfig: { aspectRatio: '3:4' },
+          responseModalities: ['TEXT', 'IMAGE'],
         },
       }),
     })
 
+    const text = await res.text()
     if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      console.error('[nano-banana]', res.status, text.slice(0, 500))
-      return null
+      console.error('[nano-banana]', res.status, text.slice(0, 600))
+      return { dataUri: null, error: `HTTP ${res.status}: ${text.slice(0, 200)}` }
     }
 
-    const data = (await res.json()) as GeminiResponse
+    let data: GeminiResponse
+    try {
+      data = JSON.parse(text) as GeminiResponse
+    } catch {
+      return { dataUri: null, error: `non-JSON response: ${text.slice(0, 200)}` }
+    }
+
+    if (data.error) {
+      return { dataUri: null, error: data.error.message ?? 'gemini error' }
+    }
+
     const parts = data.candidates?.[0]?.content?.parts ?? []
     for (const p of parts) {
       const inline = p.inlineData ?? p.inline_data
       if (inline?.data) {
         const mime = inline.mimeType ?? inline.mime_type ?? 'image/png'
-        return `data:${mime};base64,${inline.data}`
+        return { dataUri: `data:${mime};base64,${inline.data}` }
       }
     }
-    console.error('[nano-banana] no inlineData in response', JSON.stringify(data).slice(0, 400))
-    return null
+    console.error('[nano-banana] no inlineData', JSON.stringify(data).slice(0, 600))
+    return { dataUri: null, error: `无图像返回：${JSON.stringify(data).slice(0, 200)}` }
   } catch (err) {
     console.error('[nano-banana] fetch failed', err)
-    return null
+    return { dataUri: null, error: err instanceof Error ? err.message : 'fetch failed' }
   }
 }
 

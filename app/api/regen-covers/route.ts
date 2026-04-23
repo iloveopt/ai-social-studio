@@ -44,9 +44,9 @@ export async function POST() {
         hook: t.hook,
         tone: TONE,
       })
-      const dataUri = await generateCoverImage(prompt)
+      const { dataUri, error } = await generateCoverImage(prompt)
       if (!dataUri) {
-        return { seq: t.seq_num, ok: false as const }
+        return { seq: t.seq_num, ok: false as const, error: error ?? 'unknown' }
       }
       await supabase.from('topics').update({ cover_image: dataUri }).eq('id', t.id)
       return { seq: t.seq_num, ok: true as const }
@@ -59,9 +59,14 @@ export async function POST() {
       : { seq: topics[i].seq_num, ok: false as const, error: String(r.reason) }
   )
 
+  const firstError = summary.find((s) => !s.ok) as
+    | { error: string }
+    | undefined
+
   return Response.json({
     regenerated: summary.filter((s) => s.ok).length,
     total: topics.length,
+    firstError: firstError?.error,
     details: summary,
   })
 }

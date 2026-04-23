@@ -1128,17 +1128,21 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
     try {
       const res = await fetch('/api/regen-covers', { method: 'POST' })
       const data = await res.json()
-      if (res.ok) {
-        setToast(`已更新 ${data.regenerated}/${data.total} 张封面`)
-        setTimeout(() => window.location.reload(), 1200)
-      } else {
+      if (!res.ok) {
         setToast(data.error ?? '生成失败')
+        return
       }
+      if (data.regenerated === 0) {
+        setToast(`0/${data.total} 成功，原因：${data.firstError ?? '未知'}`)
+        return
+      }
+      setToast(`已更新 ${data.regenerated}/${data.total} 张封面`)
+      setTimeout(() => window.location.reload(), 1200)
     } catch {
       setToast('生成失败')
     } finally {
       setRegenCovers(false)
-      setTimeout(() => setToast(null), 3000)
+      setTimeout(() => setToast(null), 6000)
     }
   }
 
@@ -1345,7 +1349,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
         )}
 
         {toast && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-lg bg-gray-900 text-white text-sm shadow-xl">
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 rounded-lg bg-gray-900 text-white text-xs shadow-xl max-w-[90vw] break-words text-center">
             {toast}
           </div>
         )}
