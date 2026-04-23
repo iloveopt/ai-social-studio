@@ -300,15 +300,15 @@ function XhsDetailPage({
   const savesRaw = mockSaves(topic) + (saved ? 1 : 0)
   const commentCount = mockCommentCount(topic, comments.length)
 
-  // Two "slides" for the cover: one with title, one with hook/thinking quote
+  // 1-3 slides: photo (if any) → title → hook/thinking
   const slides = useMemo(() => {
-    const s: Array<{ label: string; text: string }> = [
-      { label: 'title', text: topic.title },
-    ]
+    const s: Array<{ label: 'photo' | 'title' | 'hook'; text: string }> = []
+    if (topic.cover_image) s.push({ label: 'photo', text: topic.cover_image })
+    s.push({ label: 'title', text: topic.title })
     const second = topic.hook || topic.thinking || ''
     if (second) s.push({ label: 'hook', text: second })
     return s
-  }, [topic.title, topic.hook, topic.thinking])
+  }, [topic.cover_image, topic.title, topic.hook, topic.thinking])
 
   const touchStartX = useRef<number | null>(null)
   function onTouchStart(e: React.TouchEvent) { touchStartX.current = e.touches[0].clientX }
@@ -419,39 +419,53 @@ function XhsDetailPage({
                   className="relative flex items-center justify-center"
                   style={{
                     width: `${100 / slides.length}%`,
-                    background: `linear-gradient(135deg, ${p.bg} 0%, ${p.accent} 100%)`,
+                    background:
+                      slide.label === 'photo'
+                        ? '#000'
+                        : `linear-gradient(135deg, ${p.bg} 0%, ${p.accent} 100%)`,
                   }}
                 >
-                  {/* Decorative dots */}
-                  <div className="absolute top-6 left-6 w-16 h-16 rounded-full opacity-30" style={{ background: p.accent }} />
-                  <div className="absolute bottom-10 right-8 w-24 h-24 rounded-full opacity-25" style={{ background: p.accent }} />
-                  <div className="relative z-10 px-8 text-center">
-                    {slide.label === 'title' ? (
-                      <>
-                        <p className="text-[11px] font-semibold text-gray-500 mb-3 tracking-[0.2em]">
-                          #{String(topic.seq_num).padStart(2, '0')} · {campaign.ip_name}
-                        </p>
-                        <h2
-                          className="text-gray-900 text-[22px] font-black leading-[1.3]"
-                          style={{ textShadow: '0 2px 8px rgba(255,255,255,0.6)' }}
-                        >
-                          {slide.text}
-                        </h2>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-[11px] font-semibold text-gray-500 mb-3 tracking-[0.2em]">
-                          HOOK · 情绪共鸣
-                        </p>
-                        <p
-                          className="text-gray-800 text-[18px] font-bold leading-[1.5] whitespace-pre-line"
-                          style={{ textShadow: '0 2px 8px rgba(255,255,255,0.6)' }}
-                        >
-                          {slide.text}
-                        </p>
-                      </>
-                    )}
-                  </div>
+                  {slide.label === 'photo' ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={slide.text}
+                      alt={topic.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <>
+                      {/* Decorative dots */}
+                      <div className="absolute top-6 left-6 w-16 h-16 rounded-full opacity-30" style={{ background: p.accent }} />
+                      <div className="absolute bottom-10 right-8 w-24 h-24 rounded-full opacity-25" style={{ background: p.accent }} />
+                      <div className="relative z-10 px-8 text-center">
+                        {slide.label === 'title' ? (
+                          <>
+                            <p className="text-[11px] font-semibold text-gray-500 mb-3 tracking-[0.2em]">
+                              #{String(topic.seq_num).padStart(2, '0')} · {campaign.ip_name}
+                            </p>
+                            <h2
+                              className="text-gray-900 text-[22px] font-black leading-[1.3]"
+                              style={{ textShadow: '0 2px 8px rgba(255,255,255,0.6)' }}
+                            >
+                              {topic.title}
+                            </h2>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-[11px] font-semibold text-gray-500 mb-3 tracking-[0.2em]">
+                              HOOK · 情绪共鸣
+                            </p>
+                            <p
+                              className="text-gray-800 text-[18px] font-bold leading-[1.5] whitespace-pre-line"
+                              style={{ textShadow: '0 2px 8px rgba(255,255,255,0.6)' }}
+                            >
+                              {slide.text}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
