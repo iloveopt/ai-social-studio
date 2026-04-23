@@ -58,11 +58,11 @@ const STATUS_ACTIONS = [
 ] as const
 
 const TABS = [
-  { key: 'thinking', label: '选题思考' },
+  { key: 'thinking', label: '创意' },
   { key: 'ai-score', label: 'AI评分' },
+  { key: 'comments', label: '评论' },
   { key: 'exec-plan', label: '执行方案' },
   { key: 'refs', label: '参考案例' },
-  { key: 'comments', label: '点评' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
@@ -496,17 +496,27 @@ function XhsDetailPage({
               <span>#品牌联名</span>
             </div>
 
-            <p className="mt-3 text-[11px] text-gray-400">
-              {topic.ai_evaluations.length} 位 AI 评委已打分 · 平均{' '}
-              {topic.ai_avg_score !== null ? topic.ai_avg_score.toFixed(1) : '--'}
-            </p>
-
             <button
               onClick={() => setShowPlanDrawer(true)}
-              className="mt-3 inline-flex items-center gap-1 text-[12px] text-gray-500 hover:text-gray-700"
+              className="mt-4 w-full flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-50 to-white px-4 py-3 hover:border-gray-300 hover:shadow-sm transition"
             >
-              <span>📋</span>
-              <span>查看选题策划（AI评分 / 执行方案）</span>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-green to-emerald-600 flex items-center justify-center text-white text-base flex-shrink-0">
+                  ✨
+                </div>
+                <div className="text-left min-w-0">
+                  <p className="text-[13px] font-semibold text-gray-900 leading-tight">
+                    创意 · AI 评分 · 点评
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-0.5 truncate">
+                    {topic.ai_evaluations.length} 位评委 · 平均{' '}
+                    {topic.ai_avg_score !== null ? topic.ai_avg_score.toFixed(1) : '--'} 分
+                  </p>
+                </div>
+              </div>
+              <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
             </button>
           </div>
 
@@ -638,7 +648,7 @@ function XhsDetailPage({
 
 /* Planning drawer overlays on top of the XHS detail — for users who want the AI review context */
 function PlanningDrawer({ topic, onClose }: { topic: TopicWithEvals; onClose: () => void }) {
-  const [tab, setTab] = useState<TabKey>('ai-score')
+  const [tab, setTab] = useState<TabKey>('thinking')
 
   return (
     <div className="fixed inset-0 z-[60] flex justify-center">
