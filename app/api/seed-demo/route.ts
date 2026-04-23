@@ -295,7 +295,6 @@ export async function POST() {
       .is('deleted_at', null)
 
     const existingSeqs = new Set((existingTopics ?? []).map((t) => t.seq_num))
-    const newlyInserted: { topicId: string; seed: SeedTopic }[] = []
 
     for (let i = 0; i < SEED_TOPICS.length; i++) {
       const t = SEED_TOPICS[i]
@@ -327,8 +326,6 @@ export async function POST() {
         )
       }
 
-      newlyInserted.push({ topicId: topicRow.id, seed: t })
-
       const evalRows = EVAL_MATRIX.map((judge, judgeIdx) => ({
         topic_id: topicRow.id,
         persona_name: judge.name,
@@ -346,22 +343,34 @@ export async function POST() {
       }
     }
 
-    // 4. 并行给新插入的 topic 生成封面（失败就留 null，前端有渐变兜底）
-    if (newlyInserted.length > 0 && process.env.NANO_BANANA_API_KEY) {
-      await Promise.allSettled(
-        newlyInserted.map(async ({ topicId, seed }) => {
-          const prompt = buildCoverPrompt({
-            brand: '星巴克',
-            ip: '穿Prada的女魔头2',
-            title: seed.title,
-            hook: seed.hook,
-            tone: '情感共鸣',
+    // 4. 给所有缺封面的 demo topic 生成封面（包含历史遗留的 null 行）
+    if (process.env.NANO_BANANA_API_KEY) {
+      const seedBySeq = new Map(SEED_TOPICS.map((t) => [t.seq_num, t]))
+      const { data: missingCovers } = await supabase
+        .from('topics')
+        .select('id, seq_num')
+        .eq('campaign_id', campaignId)
+        .is('deleted_at', null)
+        .is('cover_image', null)
+
+      if (missingCovers && missingCovers.length > 0) {
+        await Promise.allSettled(
+          missingCovers.map(async (row) => {
+            const seed = seedBySeq.get(row.seq_num)
+            if (!seed) return
+            const prompt = buildCoverPrompt({
+              brand: '星巴克',
+              ip: '穿Prada的女魔头2',
+              title: seed.title,
+              hook: seed.hook,
+              tone: '情感共鸣',
+            })
+            const dataUri = await generateCoverImage(prompt)
+            if (!dataUri) return
+            await supabase.from('topics').update({ cover_image: dataUri }).eq('id', row.id)
           })
-          const dataUri = await generateCoverImage(prompt)
-          if (!dataUri) return
-          await supabase.from('topics').update({ cover_image: dataUri }).eq('id', topicId)
-        })
-      )
+        )
+      }
     }
 
     return Response.json({ campaignId })
