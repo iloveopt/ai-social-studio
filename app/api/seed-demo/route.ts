@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { buildCoverPrompt, generateCoverImage } from '@/lib/nano-banana'
+import { uploadCoverFromDataUri } from '@/lib/supabase/storage'
 
 // Allow up to 60s for parallel cover generation on Vercel
 export const maxDuration = 60
@@ -367,7 +368,9 @@ export async function POST() {
             })
             const { dataUri } = await generateCoverImage(prompt)
             if (!dataUri) return
-            await supabase.from('topics').update({ cover_image: dataUri }).eq('id', row.id)
+            const url = await uploadCoverFromDataUri(row.id, dataUri)
+            if (!url) return
+            await supabase.from('topics').update({ cover_image: url }).eq('id', row.id)
           })
         )
       }

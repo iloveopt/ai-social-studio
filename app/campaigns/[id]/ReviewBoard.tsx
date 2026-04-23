@@ -942,29 +942,6 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
   const [genError, setGenError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
-  // SSR 已经给了 topic 基本信息但没带 cover_image（避免 2-3MB 首屏 payload）
-  // 挂载后异步拉封面，按 id 合并进 state，feed 里的渐变占位会被真实图替换
-  useEffect(() => {
-    let cancelled = false
-    const supabase = createClient()
-    supabase
-      .from('topics')
-      .select('id, cover_image')
-      .eq('campaign_id', campaign.id)
-      .is('deleted_at', null)
-      .not('cover_image', 'is', null)
-      .then(({ data }) => {
-        if (cancelled || !data) return
-        const coverMap = new Map(data.map((d) => [d.id as string, d.cover_image as string]))
-        setTopics((ts) =>
-          ts.map((t) => (coverMap.has(t.id) ? { ...t, cover_image: coverMap.get(t.id)! } : t))
-        )
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [campaign.id])
-
   async function updateStatus(topicId: string, status: string) {
     await fetch(`/api/topics/${topicId}/status`, {
       method: 'PATCH',

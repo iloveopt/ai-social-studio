@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { buildCoverPrompt, generateCoverImage } from '@/lib/nano-banana'
+import { uploadCoverFromDataUri } from '@/lib/supabase/storage'
 
 export const maxDuration = 60
 
@@ -48,7 +49,11 @@ export async function POST() {
       if (!dataUri) {
         return { seq: t.seq_num, ok: false as const, error: error ?? 'unknown' }
       }
-      await supabase.from('topics').update({ cover_image: dataUri }).eq('id', t.id)
+      const url = await uploadCoverFromDataUri(t.id, dataUri)
+      if (!url) {
+        return { seq: t.seq_num, ok: false as const, error: 'storage upload failed' }
+      }
+      await supabase.from('topics').update({ cover_image: url }).eq('id', t.id)
       return { seq: t.seq_num, ok: true as const }
     })
   )

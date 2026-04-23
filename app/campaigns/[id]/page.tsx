@@ -19,16 +19,11 @@ export default async function CampaignPage({
 
   if (campError || !campaign) notFound()
 
-  // SSR 不带 cover_image（base64 太大，单次 payload 可达 2-3MB，
-  // 第一次进入页面会很慢）。feed 先渲染渐变占位，客户端挂载后
-  // 再异步拉 cover_image 填充。
+  // cover_image 现在是 Supabase Storage URL（~100 字节），可以放心
+  // 跟其他字段一起 SSR，浏览器从 CDN 直接拿图，不再占 JS 堆
   const { data: topics } = await supabase
     .from('topics')
-    .select(`
-      id, created_at, campaign_id, seq_num, title, hook, thinking,
-      exec_plan, handoff, refs, persona, status, ai_avg_score, deleted_at,
-      ai_evaluations (*)
-    `)
+    .select('*, ai_evaluations(*)')
     .eq('campaign_id', id)
     .is('deleted_at', null)
     .order('seq_num', { ascending: true })
