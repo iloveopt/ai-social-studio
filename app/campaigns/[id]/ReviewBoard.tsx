@@ -42,15 +42,6 @@ function formatCount(n: number): string {
   return String(n)
 }
 
-// Planning-view gradients (used by the strategic card + preview modal)
-const GRADIENTS = [
-  'from-emerald-500 to-teal-600',
-  'from-violet-500 to-purple-600',
-  'from-orange-400 to-rose-500',
-  'from-blue-500 to-cyan-500',
-  'from-pink-500 to-fuchsia-600',
-]
-
 const STATUS_ACTIONS = [
   { status: 'approved', label: '通过', color: 'bg-brand-green text-white hover:opacity-90' },
   { status: 'discussing', label: '讨论', color: 'bg-brand-yellow text-white hover:opacity-90' },
@@ -91,16 +82,6 @@ function scoreBar(score: number) {
   return 'bg-red-500'
 }
 
-function CoverScore({ score }: { score: number | null }) {
-  if (score === null) return null
-  return (
-    <div className="flex items-baseline gap-0.5 text-white drop-shadow">
-      <span className="text-4xl font-black leading-none tabular-nums">{score.toFixed(1)}</span>
-      <span className="text-xs font-medium opacity-80">分</span>
-    </div>
-  )
-}
-
 function CoverStatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     pending: 'bg-white/85 text-gray-600',
@@ -113,31 +94,6 @@ function CoverStatusBadge({ status }: { status: string }) {
       {STATUS_LABELS[status] ?? status}
     </span>
   )
-}
-
-function TagChip({ label, color }: { label: string; color: string }) {
-  return (
-    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${color}`}>
-      {label}
-    </span>
-  )
-}
-
-const TAG_COLORS = [
-  'bg-emerald-50 text-emerald-700',
-  'bg-violet-50 text-violet-700',
-  'bg-rose-50 text-rose-700',
-  'bg-blue-50 text-blue-700',
-  'bg-amber-50 text-amber-700',
-  'bg-pink-50 text-pink-700',
-]
-
-function topicTagChips(topic: TopicWithEvals): string[] {
-  const fromHandoff = (topic.handoff ?? [])
-    .map((h) => h.tag)
-    .filter((t): t is string => !!t && typeof t === 'string')
-  const unique = Array.from(new Set(fromHandoff))
-  return unique.slice(0, 4)
 }
 
 function EvalCard({ ev }: { ev: AiEvaluation }) {
@@ -279,10 +235,12 @@ function XhsDetailPage({
   topic,
   campaign,
   onClose,
+  onStatusChange,
 }: {
   topic: TopicWithEvals
   campaign: Campaign
   onClose: () => void
+  onStatusChange: (topicId: string, status: string) => void
 }) {
   const comments = useRealtimeComments(topic.id)
   const [imgIdx, setImgIdx] = useState(0)
@@ -657,14 +615,26 @@ function XhsDetailPage({
 
       {/* Planning drawer */}
       {showPlanDrawer && (
-        <PlanningDrawer topic={topic} onClose={() => setShowPlanDrawer(false)} />
+        <PlanningDrawer
+          topic={topic}
+          onClose={() => setShowPlanDrawer(false)}
+          onStatusChange={onStatusChange}
+        />
       )}
     </div>
   )
 }
 
 /* Planning drawer overlays on top of the XHS detail — for users who want the AI review context */
-function PlanningDrawer({ topic, onClose }: { topic: TopicWithEvals; onClose: () => void }) {
+function PlanningDrawer({
+  topic,
+  onClose,
+  onStatusChange,
+}: {
+  topic: TopicWithEvals
+  onClose: () => void
+  onStatusChange: (topicId: string, status: string) => void
+}) {
   const [tab, setTab] = useState<TabKey>('thinking')
 
   return (
@@ -785,186 +755,34 @@ function PlanningDrawer({ topic, onClose }: { topic: TopicWithEvals; onClose: ()
           )}
           {tab === 'comments' && <PlanningCommentsTab topicId={topic.id} />}
         </div>
-      </div>
-    </div>
-  )
-}
 
-/* ---------------------------------------------------------------------
- * PLANNING VIEW — preview modal kept from previous design
- * ------------------------------------------------------------------- */
-
-function XhsPreviewModal({
-  topic,
-  campaign,
-  gradient,
-  onClose,
-  onApprove,
-}: {
-  topic: TopicWithEvals
-  campaign: Campaign
-  gradient: string
-  onClose: () => void
-  onApprove: () => void
-}) {
-  const stats = useMemo(() => {
-    const h = hashStr(topic.id)
-    return {
-      likes: ((h % 2) + 1) + '.' + (((h >> 3) % 9) + 1) + '万',
-      comments: ((h >> 5) % 4500) + 500,
-      favorites: ((h >> 7) % 3 + 1) + '.' + (((h >> 9) % 9) + 1) + 'k',
-    }
-  }, [topic.id])
-
-  const hashtags = useMemo(() => {
-    const tags = [
-      `#${campaign.brand_name}`,
-      `#${campaign.ip_name}`,
-      `#${campaign.tone}`,
-      '#种草',
-      '#品牌联名',
-    ]
-    return tags.slice(0, 4).join(' ')
-  }, [campaign.brand_name, campaign.ip_name, campaign.tone])
-
-  const topicTags = useMemo(() => {
-    const base = [campaign.brand_name, campaign.ip_name, '联名']
-    return base.slice(0, 3)
-  }, [campaign.brand_name, campaign.ip_name])
-
-  const fakeComments = [
-    { user: '嘟嘟同学', avatar: '🎀', text: '说的就是我！！' },
-    { user: '打工不累人', avatar: '☕', text: '已下单，等会去取～' },
-    { user: 'Yuki_', avatar: '💼', text: '转发给闺蜜了，她肯定爱' },
-  ]
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-8">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-
-      <div className="relative z-10 w-full max-w-5xl max-h-full flex flex-col md:flex-row gap-6 items-center justify-center">
-        <button
-          onClick={onClose}
-          className="absolute top-0 right-0 -mt-2 -mr-2 md:mt-2 md:mr-2 w-9 h-9 rounded-full bg-white/90 text-gray-800 hover:bg-white flex items-center justify-center shadow-lg z-20"
-          aria-label="关闭"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-
-        <div className="flex-shrink-0">
-          <div className="w-[320px] h-[660px] bg-black rounded-[44px] p-3 shadow-2xl border-[3px] border-gray-800 relative">
-            <div className="w-full h-full bg-white rounded-[32px] overflow-hidden flex flex-col relative">
-              <div className="flex-shrink-0 flex items-center justify-between px-6 pt-2 pb-1 text-[11px] font-semibold text-black">
-                <span>9:41</span>
-                <div className="flex items-center gap-1">
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M2 22h3v-6H2v6zm5 0h3V12H7v10zm5 0h3V8h-3v14zm5 0h3V4h-3v18z" />
-                  </svg>
-                  <span className="w-6 h-3 border border-black rounded-sm relative ml-0.5">
-                    <span className="absolute inset-0.5 bg-black rounded-[1px]" />
-                  </span>
-                </div>
-              </div>
-              <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-gray-100">
-                <span className="text-red-500 font-black text-lg tracking-tight">小红书</span>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                <div className="flex items-center gap-2 px-4 py-3">
-                  <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${gradient} flex-shrink-0`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      {campaign.brand_name}官方
-                    </p>
-                    <p className="text-[11px] text-gray-400">刚刚 · 来自{campaign.ip_name}</p>
-                  </div>
-                  <button className="flex-shrink-0 px-3 py-1 rounded-full bg-red-500 text-white text-xs font-medium">
-                    + 关注
-                  </button>
-                </div>
-                <div className={`aspect-square bg-gradient-to-br ${gradient} relative flex items-center justify-center`}>
-                  <span className="text-white/80 text-[120px] font-black leading-none">
-                    #{String(topic.seq_num).padStart(2, '0')}
-                  </span>
-                  <div className="absolute bottom-3 right-3 flex flex-wrap gap-1.5 justify-end max-w-[200px]">
-                    {topicTags.map((t, i) => (
-                      <span key={i} className="px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-white text-[10px] font-medium">
-                        #{t}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="px-4 py-3 space-y-2">
-                  <h3 className="text-[15px] font-bold text-gray-900 leading-snug">{topic.title}</h3>
-                  <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">{topic.hook}</p>
-                  <p className="text-[12px] text-blue-500 leading-relaxed">{hashtags}</p>
-                </div>
-                <div className="flex items-center justify-around px-4 py-2 border-t border-b border-gray-100 text-gray-700 text-xs">
-                  <div className="flex items-center gap-1"><span className="text-base">❤</span><span>{stats.likes}</span></div>
-                  <div className="flex items-center gap-1"><span className="text-base">💬</span><span>{stats.comments}</span></div>
-                  <div className="flex items-center gap-1"><span className="text-base">⭐</span><span>{stats.favorites}</span></div>
-                </div>
-                <div className="px-4 py-3 space-y-3">
-                  <p className="text-xs text-gray-400 font-medium">共 {stats.comments} 条评论</p>
-                  {fakeComments.map((c, i) => (
-                    <div key={i} className="flex gap-2">
-                      <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-sm flex-shrink-0">
-                        {c.avatar}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[12px] text-gray-500">{c.user}</p>
-                        <p className="text-[13px] text-gray-800 leading-snug">{c.text}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="h-16" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="hidden md:block w-[360px] bg-white rounded-2xl shadow-2xl p-5 max-h-[660px] overflow-y-auto">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs text-gray-400">选题编号</span>
-            <span className="text-xs font-semibold text-brand-green">#{String(topic.seq_num).padStart(2, '0')}</span>
-          </div>
-          <h3 className="text-lg font-bold text-gray-900 leading-snug mb-4">{topic.title}</h3>
-
-          {topic.exec_plan && (
-            <div className="space-y-2 mb-4">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">执行方案</p>
-              <div className="grid grid-cols-1 gap-2">
-                <div className="p-2.5 bg-gray-50 rounded-lg">
-                  <p className="text-[11px] text-gray-400 mb-0.5">内容格式</p>
-                  <p className="text-sm text-gray-800">{topic.exec_plan.format}</p>
-                </div>
-                <div className="p-2.5 bg-gray-50 rounded-lg">
-                  <p className="text-[11px] text-gray-400 mb-0.5">最佳发布时间</p>
-                  <p className="text-sm text-gray-800">{topic.exec_plan.best_time}</p>
-                </div>
-                <div className="p-2.5 bg-gray-50 rounded-lg">
-                  <p className="text-[11px] text-gray-400 mb-0.5">CTA</p>
-                  <p className="text-sm text-gray-800">{topic.exec_plan.cta}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <button onClick={onApprove} className="w-full py-3 rounded-xl bg-brand-green text-white text-sm font-semibold hover:opacity-90 transition">
-              ✓ 通过此选题
-            </button>
-            <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition">
-              返回评审
-            </button>
+        {/* Status decision footer — 通过 / 讨论 / 拒绝 */}
+        <div className="flex-shrink-0 border-t border-gray-100 px-4 py-3 bg-white">
+          <p className="text-[11px] text-gray-400 mb-2">
+            当前状态：<span className="text-gray-700 font-medium">{STATUS_LABELS[topic.status] ?? topic.status}</span>
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {STATUS_ACTIONS.map((action) => {
+              const active = topic.status === action.status
+              return (
+                <button
+                  key={action.status}
+                  onClick={() => onStatusChange(topic.id, action.status)}
+                  className={`py-2 rounded-lg text-sm font-semibold transition ${action.color} ${
+                    active ? 'ring-2 ring-offset-1 ring-current' : 'opacity-75 hover:opacity-100'
+                  }`}
+                >
+                  {action.label}
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>
     </div>
   )
 }
+
 
 /* ---------------------------------------------------------------------
  * XHS FEED CARD + VIEW — real 小红书-style double-column
@@ -1117,15 +935,10 @@ function XhsFeedView({
 
 export default function ReviewBoard({ campaign, initialTopics }: Props) {
   const [topics, setTopics] = useState<TopicWithEvals[]>(initialTopics)
-  const [current, setCurrent] = useState(0)
-  const [feedView, setFeedView] = useState(true)
   const [detailTopic, setDetailTopic] = useState<TopicWithEvals | null>(null)
-  const [previewTopic, setPreviewTopic] = useState<TopicWithEvals | null>(null)
-  const [previewGradient, setPreviewGradient] = useState<string>(GRADIENTS[0])
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
-  const [regenCovers, setRegenCovers] = useState(false)
 
   async function handleShare() {
     try {
@@ -1135,50 +948,6 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
       setToast('复制失败')
     }
     setTimeout(() => setToast(null), 2000)
-  }
-
-  async function handleRegenCovers() {
-    if (regenCovers) return
-    setRegenCovers(true)
-    setToast('正在重新生成封面，可能需要 20-30s…')
-    try {
-      const res = await fetch('/api/regen-covers', { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) {
-        setToast(data.error ?? '生成失败')
-        return
-      }
-      if (data.regenerated === 0) {
-        setToast(`0/${data.total} 成功，原因：${data.firstError ?? '未知'}`)
-        return
-      }
-      setToast(`已更新 ${data.regenerated}/${data.total} 张封面`)
-      setTimeout(() => window.location.reload(), 1200)
-    } catch {
-      setToast('生成失败')
-    } finally {
-      setRegenCovers(false)
-      setTimeout(() => setToast(null), 6000)
-    }
-  }
-
-  const touchStartX = useRef<number | null>(null)
-
-  const topic = topics[current]
-
-  function prev() { setCurrent((c) => Math.max(0, c - 1)) }
-  function next() { setCurrent((c) => Math.min(topics.length - 1, c + 1)) }
-
-  function handleTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0].clientX
-  }
-
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStartX.current === null) return
-    const dx = e.changedTouches[0].clientX - touchStartX.current
-    if (dx > 50) prev()
-    else if (dx < -50) next()
-    touchStartX.current = null
   }
 
   async function updateStatus(topicId: string, status: string) {
@@ -1221,7 +990,6 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
         .is('deleted_at', null)
         .order('seq_num', { ascending: true })
       setTopics((topicsData as TopicWithEvals[]) ?? [])
-      setCurrent(0)
     } catch (err) {
       setGenError(err instanceof Error ? err.message : '生成失败')
     } finally {
@@ -1237,10 +1005,8 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
     return init
   }, [topics])
 
-  /* ------- XHS mode: minimal top chrome, feed content ------- */
-  if (feedView) {
-    return (
-      <div className="flex flex-col min-h-screen bg-white">
+  return (
+    <div className="flex flex-col min-h-screen bg-white">
         {/* XHS-style top bar */}
         <header className="flex-shrink-0 sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-50">
           <div className="px-3 py-2.5 flex items-center justify-between gap-2">
@@ -1258,31 +1024,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
               </div>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              <button
-                onClick={() => setFeedView(false)}
-                title="切换到策划视图"
-                className="h-8 px-2.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 text-[11px] font-medium flex items-center gap-1"
-              >
-                <span>🗂️</span>
-                <span className="hidden xs:inline">策划</span>
-              </button>
               <InspirationUploader campaignId={campaign.id} />
-              <button
-                onClick={handleRegenCovers}
-                disabled={regenCovers}
-                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-60"
-                aria-label="重新生成封面"
-                title="重新生成封面"
-              >
-                {regenCovers ? (
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                ) : (
-                  <span className="text-sm">🎨</span>
-                )}
-              </button>
               <button
                 onClick={handleShare}
                 className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50"
@@ -1305,7 +1047,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                 ) : (
                   <>
                     <span>✨</span>
-                    <span>{topics.length > 0 ? '重新生成' : '生成'}</span>
+                    <span>{topics.length > 0 ? '新增创意' : '生成'}</span>
                   </>
                 )}
               </button>
@@ -1358,9 +1100,10 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
 
         {detailTopic && (
           <XhsDetailPage
-            topic={detailTopic}
+            topic={topics.find((t) => t.id === detailTopic.id) ?? detailTopic}
             campaign={campaign}
             onClose={() => setDetailTopic(null)}
+            onStatusChange={updateStatus}
           />
         )}
 
@@ -1371,223 +1114,4 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
         )}
       </div>
     )
-  }
-
-  /* ------- Planning mode (original carousel) ------- */
-  return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 flex-shrink-0">
-        <div className="px-4 py-3 flex items-center justify-between gap-3">
-          <div className="min-w-0 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-green to-emerald-600 flex items-center justify-center text-white font-black text-sm flex-shrink-0">
-              S
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                <span className="font-semibold text-gray-500">AI Social Studio</span>
-                <span className="w-0.5 h-0.5 rounded-full bg-gray-300" />
-                <span className="truncate">策划视图</span>
-              </div>
-              <h1 className="text-sm font-bold text-gray-900 truncate leading-tight">
-                {campaign.brand_name} × {campaign.ip_name}
-              </h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button
-              onClick={() => setFeedView(true)}
-              title="切换到XHS视图"
-              className="h-8 px-2.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 text-[11px] font-medium flex items-center gap-1"
-            >
-              <span>📱</span>
-              <span>XHS</span>
-            </button>
-            <button
-              onClick={handleGenerate}
-              disabled={generating}
-              className="h-8 px-3 rounded-lg bg-brand-green text-white text-[12px] font-medium hover:opacity-90 disabled:opacity-60 flex items-center gap-1"
-            >
-              {generating ? '生成中' : (topics.length > 0 ? '重新生成' : '生成')}
-            </button>
-          </div>
-        </div>
-        {topics.length > 0 && (
-          <div className="bg-gray-50 border-t border-gray-100">
-            <div className="px-4 py-2 flex items-center justify-between text-[12px]">
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-brand-green" /><span className="text-gray-500">通过</span><span className="font-bold text-brand-green tabular-nums">{counts.approved}</span></span>
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-brand-yellow" /><span className="text-gray-500">讨论</span><span className="font-bold text-brand-yellow tabular-nums">{counts.discussing}</span></span>
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-gray-400" /><span className="text-gray-500">待审</span><span className="font-bold text-gray-500 tabular-nums">{counts.pending}</span></span>
-              </div>
-              <span className="text-gray-400">总计 <span className="font-bold text-gray-700 tabular-nums">{topics.length}</span></span>
-            </div>
-          </div>
-        )}
-      </header>
-
-      <main className="flex-1 overflow-y-auto flex flex-col items-center justify-start px-3 py-4 bg-gray-50">
-        <div className="w-full">
-          {genError && (
-            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
-              {genError}
-            </div>
-          )}
-
-          {generating && (
-            <div className="text-center py-16 space-y-4">
-              <div className="flex justify-center gap-1.5">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="w-2.5 h-2.5 rounded-full bg-brand-green animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-                ))}
-              </div>
-              <p className="text-gray-500 text-sm">AI 正在生成选题和评审打分，请稍候…</p>
-            </div>
-          )}
-
-          {!generating && topics.length === 0 && (
-            <div className="text-center py-16 space-y-3">
-              <div className="text-5xl">✨</div>
-              <p className="text-gray-500 text-base">点击「生成」，让 AI 为你生成内容创意</p>
-            </div>
-          )}
-
-          {!generating && topics.length > 0 && topic && (
-            <>
-              <div
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden select-none"
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-              >
-                <div className={`relative h-36 bg-gradient-to-br ${GRADIENTS[current % GRADIENTS.length]} p-4`}>
-                  <div className="absolute top-3 right-3">
-                    <CoverStatusBadge status={topic.status} />
-                  </div>
-                  <div className="absolute bottom-3 left-4">
-                    <span className="text-white/55 text-5xl font-black leading-none tracking-tight">
-                      #{String(topic.seq_num).padStart(2, '0')}
-                    </span>
-                  </div>
-                  <div className="absolute bottom-3 right-4">
-                    <CoverScore score={topic.ai_avg_score} />
-                  </div>
-                </div>
-                <div className="p-4 space-y-3">
-                  <div>
-                    <h2 className="text-[17px] font-bold text-gray-900 leading-snug">{topic.title}</h2>
-                    <p className="text-sm text-gray-500 leading-relaxed mt-1.5 line-clamp-2">{topic.hook}</p>
-                  </div>
-                  {(() => {
-                    const tags = topicTagChips(topic)
-                    if (tags.length === 0) return null
-                    return (
-                      <div className="flex flex-wrap gap-1.5">
-                        {tags.map((t, i) => (
-                          <TagChip key={i} label={t} color={TAG_COLORS[i % TAG_COLORS.length]} />
-                        ))}
-                      </div>
-                    )
-                  })()}
-                  <div className="pt-1 space-y-2">
-                    <button
-                      onClick={() => {
-                        setPreviewGradient(GRADIENTS[current % GRADIENTS.length])
-                        setPreviewTopic(topic)
-                      }}
-                      className="w-full py-2.5 rounded-lg border border-red-200 bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition flex items-center justify-center gap-1.5"
-                    >
-                      出街预览（小红书样式）
-                    </button>
-                    <div className="grid grid-cols-3 gap-2">
-                      {STATUS_ACTIONS.map((action) => {
-                        const active = topic.status === action.status
-                        return (
-                          <button
-                            key={action.status}
-                            onClick={() => updateStatus(topic.id, action.status)}
-                            className={`py-2 rounded-lg text-sm font-medium transition ${action.color} ${
-                              active ? 'ring-2 ring-offset-1 ring-current font-bold' : 'opacity-80 hover:opacity-100'
-                            }`}
-                          >
-                            {action.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    <button
-                      onClick={() => setDetailTopic(topic)}
-                      className="w-full py-2.5 rounded-lg border border-gray-300 text-sm text-gray-700 font-medium hover:bg-gray-50 transition"
-                    >
-                      查看详情 →
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between mt-4">
-                <button
-                  onClick={prev}
-                  disabled={current === 0}
-                  className="p-2 rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 transition shadow-sm"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                <div className="flex gap-1.5">
-                  {topics.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrent(i)}
-                      className={`rounded-full transition-all ${
-                        i === current ? 'w-5 h-2 bg-brand-green' : 'w-2 h-2 bg-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <button
-                  onClick={next}
-                  disabled={current === topics.length - 1}
-                  className="p-2 rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 transition shadow-sm"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-              <p className="text-center text-xs text-gray-400 mt-2">
-                {current + 1} / {topics.length} · 左右滑动切换
-              </p>
-            </>
-          )}
-        </div>
-      </main>
-
-      {detailTopic && (
-        <XhsDetailPage
-          topic={detailTopic}
-          campaign={campaign}
-          onClose={() => setDetailTopic(null)}
-        />
-      )}
-
-      {previewTopic && (
-        <XhsPreviewModal
-          topic={previewTopic}
-          campaign={campaign}
-          gradient={previewGradient}
-          onClose={() => setPreviewTopic(null)}
-          onApprove={() => {
-            updateStatus(previewTopic.id, 'approved')
-            setPreviewTopic(null)
-          }}
-        />
-      )}
-
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-lg bg-gray-900 text-white text-sm shadow-xl">
-          {toast}
-        </div>
-      )}
-    </div>
-  )
 }

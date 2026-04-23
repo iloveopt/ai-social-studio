@@ -138,8 +138,16 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServiceClient()
 
-    // Delete existing topics for this campaign
-    await supabase.from('topics').delete().eq('campaign_id', campaignId)
+    // 查现有 seq_num，新创意接在后面（append-only）
+    const { data: existingTopics } = await supabase
+      .from('topics')
+      .select('seq_num')
+      .eq('campaign_id', campaignId)
+      .is('deleted_at', null)
+    const baseSeq = (existingTopics ?? []).reduce(
+      (max, t) => Math.max(max, t.seq_num ?? 0),
+      0
+    )
 
     // Generate 5 topics
     const rawTopics = await generateTopics({ brand, ip, audience, goal, platforms, tone })
@@ -161,7 +169,7 @@ export async function POST(request: NextRequest) {
         .from('topics')
         .insert({
           campaign_id: campaignId,
-          seq_num: i + 1,
+          seq_num: baseSeq + i + 1,
           title: raw.title,
           hook: raw.hook,
           thinking: raw.thinking,
