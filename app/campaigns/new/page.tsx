@@ -1,8 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import type { User } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
+import AuthMenu from '@/components/auth-menu'
 
 const PLATFORMS = [
   { value: 'xhs', label: '小红书' },
@@ -17,8 +20,30 @@ type Stage = 'idle' | 'creating' | 'generating' | 'redirecting'
 
 export default function NewCampaignPage() {
   const router = useRouter()
+  const supabase = createClient()
   const [stage, setStage] = useState<Stage>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [authReady, setAuthReady] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user ?? null)
+      setAuthReady(true)
+    })
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [supabase])
+
+  async function signInWithGitHub() {
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/campaigns/new')}`
+    await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: { redirectTo },
+    })
+  }
 
   const [form, setForm] = useState({
     brand_name: '',
@@ -102,13 +127,16 @@ export default function NewCampaignPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-[600px] mx-auto flex items-center gap-3">
-          <Link href="/campaigns" className="text-gray-400 hover:text-gray-600 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </Link>
-          <span className="text-sm text-gray-400">返回列表</span>
+        <div className="max-w-[600px] mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link href="/campaigns" className="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <span className="text-sm text-gray-400">返回列表</span>
+          </div>
+          <AuthMenu variant="light" />
         </div>
       </header>
 
@@ -120,6 +148,35 @@ export default function NewCampaignPage() {
           </p>
         </div>
 
+        {!authReady ? (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10 text-center text-sm text-gray-400">
+            加载中…
+          </div>
+        ) : !user ? (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-full bg-gray-900 text-white flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="w-6 h-6">
+                <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.17c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.27-1.69-1.27-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.25 3.34.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.16 1.18.92-.26 1.9-.39 2.88-.39.98 0 1.96.13 2.88.39 2.2-1.49 3.16-1.18 3.16-1.18.62 1.59.23 2.76.11 3.05.74.81 1.18 1.84 1.18 3.1 0 4.42-2.69 5.4-5.25 5.68.41.36.78 1.06.78 2.13v3.16c0 .31.21.67.8.56C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z" />
+              </svg>
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-base font-semibold text-gray-900">请先登录</h2>
+              <p className="text-sm text-gray-500">
+                创建 Campaign 需要登录，登录后内容将归属于你的账号
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={signInWithGitHub}
+              className="inline-flex items-center justify-center gap-2 px-5 h-10 rounded-full bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium transition-colors"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="w-4 h-4">
+                <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.17c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.27-1.69-1.27-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.25 3.34.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.16 1.18.92-.26 1.9-.39 2.88-.39.98 0 1.96.13 2.88.39 2.2-1.49 3.16-1.18 3.16-1.18.62 1.59.23 2.76.11 3.05.74.81 1.18 1.84 1.18 3.1 0 4.42-2.69 5.4-5.25 5.68.41.36.78 1.06.78 2.13v3.16c0 .31.21.67.8.56C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z" />
+              </svg>
+              使用 GitHub 登录
+            </button>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
@@ -291,6 +348,7 @@ export default function NewCampaignPage() {
             {submitLabel}
           </button>
         </form>
+        )}
       </main>
     </div>
   )
