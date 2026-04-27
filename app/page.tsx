@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import AuthMenu from '@/components/auth-menu'
 
 type Platform = {
   key: 'xhs' | 'douyin' | 'xlb'
@@ -89,7 +90,10 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex flex-col items-center justify-center px-4 py-10">
+    <main className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex flex-col items-center justify-center px-4 py-10 relative">
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+        <AuthMenu variant="dark" />
+      </div>
       <div className="max-w-2xl w-full text-center space-y-10">
         <div className="space-y-3">
           <div className="flex justify-center gap-2 mb-6">

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import type { Campaign } from '@/types'
+import AuthMenu from '@/components/auth-menu'
 
 const PLATFORM_LABELS: Record<string, string> = {
   xhs: '小红书',
@@ -42,15 +43,18 @@ export default async function CampaignsPage() {
             </Link>
             <h1 className="text-lg font-semibold text-gray-900">所有 Campaign</h1>
           </div>
-          <Link
-            href="/campaigns/new"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-green text-white text-sm font-medium hover:opacity-90 transition-opacity"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            新建
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/campaigns/new"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-green text-white text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              新建
+            </Link>
+            <AuthMenu variant="light" />
+          </div>
         </div>
       </header>
 
