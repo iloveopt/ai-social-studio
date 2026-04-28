@@ -265,9 +265,11 @@ export async function POST() {
       .maybeSingle()
 
     let campaignId: string
+    let isNewCampaign = false
     if (existing?.id) {
       campaignId = existing.id
     } else {
+      isNewCampaign = true
       const { data: campaign, error: campError } = await supabase
         .from('campaigns')
         .insert({
@@ -344,8 +346,8 @@ export async function POST() {
       }
     }
 
-    // 4. 给所有缺封面的 demo topic 生成封面（包含历史遗留的 null 行）
-    if (process.env.NANO_BANANA_API_KEY) {
+    // 4. 仅在首次创建 campaign 时生成封面，避免重复访问首页时反复触发图片生成导致超时
+    if (isNewCampaign && process.env.NANO_BANANA_API_KEY) {
       const seedBySeq = new Map(SEED_TOPICS.map((t) => [t.seq_num, t]))
       const { data: missingCovers } = await supabase
         .from('topics')

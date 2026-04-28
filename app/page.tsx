@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -177,14 +176,6 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-gray-500 pt-2 border-t border-white/5">
-          <Link href="/campaigns/new" className="hover:text-white transition-colors">
-            + 新建 Campaign
-          </Link>
-          <Link href="/campaigns" className="hover:text-white transition-colors">
-            查看所有 Campaign
-          </Link>
-        </div>
       </div>
 
       {toast && (
