@@ -10,7 +10,7 @@ function normalizeBaseURL(raw: string | undefined): string {
 
 const BASE_URL = normalizeBaseURL(process.env.ANTHROPIC_BASE_URL)
 
-export const CLAUDE_MODEL = 'claude-sonnet-4-5'
+export const CLAUDE_MODEL = 'claude-sonnet-4-6'
 
 type TextBlock = { type: 'text'; text: string }
 type ImageBlock = {
