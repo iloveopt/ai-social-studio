@@ -237,17 +237,38 @@ function XhsDetailPage({
   campaign,
   onClose,
   onStatusChange,
+  onCoverChanged,
 }: {
   topic: TopicWithEvals
   campaign: Campaign
   onClose: () => void
   onStatusChange: (topicId: string, status: string) => void
+  onCoverChanged: (topicId: string, newUrl: string) => void
 }) {
   const comments = useRealtimeComments(topic.id)
   const [imgIdx, setImgIdx] = useState(0)
   const [followed, setFollowed] = useState(false)
   const [liked, setLiked] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [regenLoading, setRegenLoading] = useState(false)
+  const [regenError, setRegenError] = useState<string | null>(null)
+
+  async function handleRegenerateCover() {
+    if (regenLoading) return
+    setRegenLoading(true)
+    setRegenError(null)
+    try {
+      const res = await fetch(`/api/topics/${topic.id}/regenerate-cover`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? '生成失败')
+      onCoverChanged(topic.id, data.cover_image)
+    } catch (err) {
+      setRegenError(err instanceof Error ? err.message : '生成失败')
+      setTimeout(() => setRegenError(null), 3000)
+    } finally {
+      setRegenLoading(false)
+    }
+  }
   const [commentText, setCommentText] = useState('')
   const [userName, setUserName] = useState('')
   const [showNameInput, setShowNameInput] = useState(false)
@@ -429,6 +450,50 @@ function XhsDetailPage({
             {slides.length > 1 && (
               <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-white text-[11px] font-medium tabular-nums">
                 {imgIdx + 1}/{slides.length}
+              </div>
+            )}
+
+            {/* Regenerate cover button — 仅在有真实封面时出现 */}
+            {topic.cover_image && (
+              <button
+                type="button"
+                onClick={handleRegenerateCover}
+                disabled={regenLoading}
+                className="absolute top-3 left-3 z-20 flex items-center gap-1 px-3 h-8 rounded-full bg-black/50 backdrop-blur-md text-white text-[12px] font-medium hover:bg-black/70 transition disabled:opacity-60"
+                aria-label="重新生成配图"
+              >
+                {regenLoading ? (
+                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <span>🔄</span>
+                )}
+                <span>{regenLoading ? '生成中…' : '重新生成'}</span>
+              </button>
+            )}
+
+            {/* Loading overlay during regeneration */}
+            {regenLoading && (
+              <div className="absolute inset-0 z-10 bg-black/55 flex flex-col items-center justify-center gap-3 text-white">
+                <div className="flex gap-1.5">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="w-2.5 h-2.5 rounded-full bg-white animate-bounce"
+                      style={{ animationDelay: `${i * 0.15}s` }}
+                    />
+                  ))}
+                </div>
+                <p className="text-sm">AI 正在重新生成配图…</p>
+              </div>
+            )}
+
+            {/* Error toast on cover */}
+            {regenError && !regenLoading && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-red-500/90 text-white text-xs">
+                {regenError}
               </div>
             )}
 
@@ -960,6 +1025,12 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
     )
   }
 
+  function updateCover(topicId: string, newUrl: string) {
+    setTopics((ts) =>
+      ts.map((t) => (t.id === topicId ? { ...t, cover_image: newUrl } : t))
+    )
+  }
+
   async function handleGenerate() {
     setGenerating(true)
     setGenError(null)
@@ -1090,6 +1161,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
             campaign={campaign}
             onClose={() => setDetailTopic(null)}
             onStatusChange={updateStatus}
+            onCoverChanged={updateCover}
           />
         )}
 
