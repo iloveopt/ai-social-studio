@@ -8,6 +8,7 @@ import {
   demoCoverStoragePath,
   type MockTopic,
 } from '@/lib/mock-fixtures'
+import type { TopicCategory, TopicWorkspace } from '@/types'
 
 // 生成是真实 Claude 调用 (~10-20s)；评委打分 demo 阶段 mock 即可
 export const maxDuration = 60
@@ -164,18 +165,45 @@ Campaign目标：${goal}
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { campaignId, brand, ip, audience, goal, platforms, tone } = body
+    const {
+      campaignId,
+      brand,
+      ip,
+      audience,
+      goal,
+      platforms,
+      tone,
+      category,
+      seedText,
+      limit,
+      workspace,
+    } = body as {
+      campaignId?: string
+      brand?: string
+      ip?: string
+      audience?: string
+      goal?: string
+      platforms?: string[]
+      tone?: string
+      category?: TopicCategory
+      seedText?: string
+      limit?: number
+      workspace?: TopicWorkspace
+    }
 
     if (!campaignId || !brand || !ip || !audience || !goal || !platforms || !tone) {
       return Response.json({ error: '缺少必要参数' }, { status: 400 })
     }
 
+    const targetWorkspace: TopicWorkspace = workspace === 'review' ? 'review' : 'draft'
+    const requestedLimit = typeof limit === 'number' && limit > 0 && limit <= 10 ? limit : 5
+
     const supabase = createServiceClient()
 
-    // 查现有 seq_num，新创意接在后面（append-only）
+    // 查现有：seq_num 用于 append-only；同时收集已有 demo slug 用于去重
     const { data: existingTopics } = await supabase
       .from('topics')
-      .select('seq_num')
+      .select('seq_num, title')
       .eq('campaign_id', campaignId)
       .is('deleted_at', null)
     const baseSeq = (existingTopics ?? []).reduce(
@@ -183,17 +211,23 @@ export async function POST(request: NextRequest) {
       0
     )
 
-    // Demo 模式：跳过 Claude 调用，直接从 fixtures 池抽 5 条
+    // Demo 模式：从 fixtures 按栏目抽，排除已使用的 slug
     let rawTopics: RawTopic[]
     let demoSampled: MockTopic[] = []
     if (isDemoMode()) {
       // 模拟 ~5.5s 算法时间，给打字机阶段文案完整播放空间
       await new Promise((r) => setTimeout(r, 5500))
-      demoSampled = sampleTopics(5)
+      // 用 title 反查池里 slug 来构造 exclude 集合（避免拉到底重复）
+      const usedTitles = new Set((existingTopics ?? []).map((t) => t.title))
+      // 注：sampleTopics 内部按 slug 排除；此处用 title 间接排除
+      demoSampled = sampleTopics(requestedLimit, { category })
+        .filter((t) => !usedTitles.has(t.title))
+        .slice(0, requestedLimit)
+      // seedText 进入 thinking 字段开头作为「客户提示」
       rawTopics = demoSampled.map((t) => ({
         title: t.title,
         hook: t.hook,
-        thinking: t.thinking,
+        thinking: seedText ? `「客户提示」${seedText}\n\n${t.thinking}` : t.thinking,
         exec_plan: t.exec_plan,
         handoff: t.handoff,
         persona: t.persona,
@@ -237,6 +271,8 @@ export async function POST(request: NextRequest) {
           status: 'pending',
           ai_avg_score: Math.round(avgScore * 10) / 10,
           cover_image: demoCoverUrl,
+          category: demoSampled[i]?.category ?? category ?? null,
+          workspace: targetWorkspace,
         })
         .select('id')
         .single()
