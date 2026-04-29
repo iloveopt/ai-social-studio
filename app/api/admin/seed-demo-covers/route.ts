@@ -34,6 +34,18 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceClient()
   const bucket = demoCoverBucket()
 
+  // 确保 bucket 存在（首次部署时可能未创建）
+  const { data: buckets } = await supabase.storage.listBuckets()
+  if (!buckets?.some((b) => b.name === bucket)) {
+    const { error: createErr } = await supabase.storage.createBucket(bucket, { public: true })
+    if (createErr) {
+      return Response.json(
+        { error: `创建 bucket 失败: ${createErr.message}` },
+        { status: 500 }
+      )
+    }
+  }
+
   // 一次性 list 已存在文件
   const { data: existingFiles } = await supabase.storage.from(bucket).list('demo', { limit: 1000 })
   const existingSet = new Set((existingFiles ?? []).map((f) => f.name))
