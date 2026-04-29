@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import type { Campaign, TopicWithEvals, Comment, AiEvaluation } from '@/types'
 import InspirationUploader from './InspirationUploader'
@@ -378,13 +379,13 @@ function XhsDetailPage({
                   }}
                 >
                   {slide.label === 'photo' ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={slide.text}
                       alt={topic.title}
-                      loading="eager"
-                      decoding="async"
-                      className="w-full h-full object-cover"
+                      fill
+                      priority
+                      sizes="(max-width: 390px) 100vw, 390px"
+                      className="object-cover"
                     />
                   ) : (
                     <>
@@ -818,13 +819,12 @@ function XhsFeedCard({
         }
       >
         {topic.cover_image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={topic.cover_image}
             alt={topic.title}
-            loading="lazy"
-            decoding="async"
-            className="absolute inset-0 w-full h-full object-cover"
+            fill
+            sizes="(max-width: 390px) 50vw, 195px"
+            className="object-cover"
           />
         ) : (
           <>
