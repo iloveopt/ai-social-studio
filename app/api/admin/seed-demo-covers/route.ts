@@ -7,12 +7,13 @@ import {
   demoCoverStoragePath,
 } from '@/lib/mock-fixtures'
 
-export const maxDuration = 300
+export const maxDuration = 60
 
-// 一次性预生成 15 张 demo 封面，存到 Storage 的 demo/ 目录
-// 调用方式：POST /api/admin/seed-demo-covers?confirm=yes&force=false
-//   confirm=yes 必填，防止误触发（每次会调 nano-banana 15 次，要花钱）
-//   force=true 时强制重新生成已存在的封面，默认跳过
+// 分批预生成 demo 封面（Vercel Hobby 60s 限额，单次最多处理 limit 张）
+// 调用方式：POST /api/admin/seed-demo-covers?confirm=yes&limit=3&force=false
+//   confirm=yes 必填，防误触发
+//   limit  默认 3，单次处理多少张（每张 ~15s）
+//   force=true 强制重新生成已存在的，默认跳过
 export async function POST(request: NextRequest) {
   const url = new URL(request.url)
   if (url.searchParams.get('confirm') !== 'yes') {
@@ -22,6 +23,8 @@ export async function POST(request: NextRequest) {
     )
   }
   const force = url.searchParams.get('force') === 'true'
+  const limitParam = parseInt(url.searchParams.get('limit') ?? '3', 10)
+  const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : 3
 
   if (!process.env.NANO_BANANA_API_KEY) {
     return Response.json({ error: 'NANO_BANANA_API_KEY 未配置' }, { status: 500 })
@@ -37,20 +40,20 @@ export async function POST(request: NextRequest) {
     error?: string
   }> = []
 
-  for (const topic of DEMO_TOPICS) {
-    const path = demoCoverStoragePath(topic.slug)
+  // 先一次性拿 demo/ 目录下所有已存在文件，避免每个 slug 单独 list
+  const { data: existingFiles } = await supabase.storage.from(bucket).list('demo', { limit: 1000 })
+  const existingSet = new Set((existingFiles ?? []).map((f) => f.name))
 
-    // 检查是否已存在
-    if (!force) {
-      const { data: existing } = await supabase.storage.from(bucket).list('demo', {
-        search: `${topic.slug}.png`,
-      })
-      const exists = (existing ?? []).some((f) => f.name === `${topic.slug}.png`)
-      if (exists) {
-        const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path)
-        results.push({ slug: topic.slug, status: 'skipped', url: pub.publicUrl })
-        continue
-      }
+  let createdCount = 0
+  for (const topic of DEMO_TOPICS) {
+    if (createdCount >= limit) break
+    const path = demoCoverStoragePath(topic.slug)
+    const fileName = `${topic.slug}.png`
+
+    if (!force && existingSet.has(fileName)) {
+      const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path)
+      results.push({ slug: topic.slug, status: 'skipped', url: pub.publicUrl })
+      continue
     }
 
     const prompt = buildCoverPrompt({
@@ -83,13 +86,17 @@ export async function POST(request: NextRequest) {
 
     const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path)
     results.push({ slug: topic.slug, status: 'created', url: pub.publicUrl })
+    createdCount++
   }
+
+  const remaining = DEMO_TOPICS.length - existingSet.size - createdCount
 
   const summary = {
     total: DEMO_TOPICS.length,
     created: results.filter((r) => r.status === 'created').length,
     skipped: results.filter((r) => r.status === 'skipped').length,
     failed: results.filter((r) => r.status === 'failed').length,
+    remaining: Math.max(0, remaining),
   }
 
   return Response.json({ summary, results })
