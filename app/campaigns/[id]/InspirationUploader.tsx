@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import type { InspirationSuggestion } from '@/types'
+import { TypewriterStages } from './TypewriterStages'
 
 const MAX_SIZE = 5 * 1024 * 1024
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/jpg']
@@ -159,24 +160,37 @@ export default function InspirationUploader({ campaignId, open, onClose }: Props
                       ✕
                     </button>
                   </div>
-                  {!analysis && (
+                  {!analysis && !loading && (
                     <button
                       onClick={handleAnalyze}
-                      disabled={loading}
-                      className="w-full py-2.5 rounded-xl bg-brand-green text-white text-sm font-semibold hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2"
+                      className="w-full py-2.5 rounded-xl bg-brand-green text-white text-sm font-semibold hover:opacity-90 transition flex items-center justify-center gap-2"
                     >
-                      {loading ? (
-                        <>
-                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                          </svg>
-                          AI 分析中...
-                        </>
-                      ) : (
-                        <>✨ 分析并生成创意</>
-                      )}
+                      ✨ 分析并生成创意
                     </button>
+                  )}
+                  {loading && (
+                    <div className="py-3 flex flex-col items-center gap-2.5">
+                      <div className="flex gap-1.5">
+                        {[0, 1, 2].map((i) => (
+                          <div
+                            key={i}
+                            className="w-2 h-2 rounded-full bg-brand-green animate-bounce"
+                            style={{ animationDelay: `${i * 0.15}s` }}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-gray-500 text-sm min-h-[1.5em]">
+                        <TypewriterStages
+                          stages={[
+                            '解析截图视觉风格…',
+                            '提取文案语气特征…',
+                            '匹配品牌调性…',
+                            '生成相似方向创意…',
+                          ]}
+                          cursorClassName="bg-brand-green"
+                        />
+                      </p>
+                    </div>
                   )}
                 </div>
               )}

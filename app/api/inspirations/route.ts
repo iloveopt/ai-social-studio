@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     // Demo 模式：跳过 Vision 调用，直接用预备 fixture
     if (isDemoMode()) {
-      await new Promise((r) => setTimeout(r, 1500))
+      await new Promise((r) => setTimeout(r, 4000))
       const mock = sampleInspiration()
       const { data: insertedDemo, error: demoErr } = await supabase
         .from('inspirations')
