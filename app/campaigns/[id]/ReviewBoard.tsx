@@ -3,9 +3,24 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import type { Campaign, TopicWithEvals, Comment, AiEvaluation } from '@/types'
+import type {
+  Campaign,
+  TopicWithEvals,
+  Comment,
+  AiEvaluation,
+  TopicCategory,
+  TopicWorkspace,
+} from '@/types'
 import InspirationUploader from './InspirationUploader'
 import { TypewriterStages } from './TypewriterStages'
+
+const CATEGORY_TABS: { key: TopicCategory | 'all'; label: string; emoji: string }[] = [
+  { key: 'all', label: '全部', emoji: '✨' },
+  { key: 'hot', label: '热点', emoji: '🔥' },
+  { key: 'campaign', label: '营销活动', emoji: '🎯' },
+  { key: 'product', label: '产品', emoji: '☕' },
+  { key: 'store', label: '门店', emoji: '📍' },
+]
 
 // Pastel palette for topic "cover images" (keyed by seq_num)
 const SEQ_PALETTE: Array<{ bg: string; accent: string; avatar: string }> = [
@@ -238,12 +253,14 @@ function XhsDetailPage({
   onClose,
   onStatusChange,
   onCoverChanged,
+  onPromote,
 }: {
   topic: TopicWithEvals
   campaign: Campaign
   onClose: () => void
   onStatusChange: (topicId: string, status: string) => void
   onCoverChanged: (topicId: string, newUrl: string) => void
+  onPromote: (topicId: string, target: TopicWorkspace) => void
 }) {
   const comments = useRealtimeComments(topic.id)
   const [imgIdx, setImgIdx] = useState(0)
@@ -828,11 +845,22 @@ function PlanningDrawer({
           {tab === 'comments' && <PlanningCommentsTab topicId={topic.id} comments={comments} />}
         </div>
 
-        {/* Status decision footer — 通过 / 讨论 / 拒绝 */}
-        <div className="flex-shrink-0 border-t border-gray-100 px-4 py-3 bg-white">
-          <p className="text-[11px] text-gray-400 mb-2">
-            当前状态：<span className="text-gray-700 font-medium">{STATUS_LABELS[topic.status] ?? topic.status}</span>
-          </p>
+        {/* Status decision footer — 通过 / 讨论 / 拒绝 + 工作区切换 */}
+        <div className="flex-shrink-0 border-t border-gray-100 px-4 py-3 bg-white space-y-2.5">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-gray-400">
+              当前状态：<span className="text-gray-700 font-medium">{STATUS_LABELS[topic.status] ?? topic.status}</span>
+            </p>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                topic.workspace === 'review'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {topic.workspace === 'review' ? '客户讨论区' : '草稿工作区'}
+            </span>
+          </div>
           <div className="grid grid-cols-3 gap-2">
             {STATUS_ACTIONS.map((action) => {
               const active = topic.status === action.status
@@ -849,6 +877,15 @@ function PlanningDrawer({
               )
             })}
           </div>
+          <button
+            type="button"
+            onClick={() =>
+              onPromote(topic.id, topic.workspace === 'review' ? 'draft' : 'review')
+            }
+            className="w-full py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition"
+          >
+            {topic.workspace === 'review' ? '← 收回到草稿' : '→ 推到客户讨论区'}
+          </button>
         </div>
       </div>
     </div>
@@ -1013,6 +1050,11 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
   const [toast, setToast] = useState<string | null>(null)
   const [fabOpen, setFabOpen] = useState(false)
   const [inspOpen, setInspOpen] = useState(false)
+  const [textOpen, setTextOpen] = useState(false)
+  const [textInput, setTextInput] = useState('')
+  const [workspace, setWorkspace] = useState<TopicWorkspace>('draft')
+  const [category, setCategory] = useState<TopicCategory | 'all'>('all')
+  const [autoLoading, setAutoLoading] = useState(false)
 
   async function updateStatus(topicId: string, status: string) {
     await fetch(`/api/topics/${topicId}/status`, {
@@ -1031,9 +1073,17 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
     )
   }
 
-  async function handleGenerate() {
-    setGenerating(true)
-    setGenError(null)
+  async function runGenerate(opts: {
+    limit?: number
+    seedText?: string
+    silent?: boolean
+  } = {}) {
+    const { limit = 3, seedText, silent = false } = opts
+    if (silent) setAutoLoading(true)
+    else {
+      setGenerating(true)
+      setGenError(null)
+    }
     try {
       const res = await fetch('/api/generate-topics', {
         method: 'POST',
@@ -1046,10 +1096,13 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
           goal: campaign.campaign_goal,
           platforms: campaign.platforms,
           tone: campaign.tone,
+          category: category === 'all' ? undefined : category,
+          seedText,
+          limit,
+          workspace: 'draft', // 生成永远落在草稿区
         }),
       })
       if (!res.ok) {
-        // 响应可能是 JSON 或 HTML（Vercel 504 超时页），只读一次
         const text = await res.text().catch(() => '')
         let msg = `HTTP ${res.status}`
         try {
@@ -1069,10 +1122,29 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
         .order('seq_num', { ascending: true })
       setTopics((topicsData as TopicWithEvals[]) ?? [])
     } catch (err) {
-      setGenError(err instanceof Error ? err.message : '生成失败')
+      if (!silent) setGenError(err instanceof Error ? err.message : '生成失败')
     } finally {
-      setGenerating(false)
+      if (silent) setAutoLoading(false)
+      else setGenerating(false)
     }
+  }
+
+  async function promoteTopic(topicId: string, target: TopicWorkspace) {
+    const res = await fetch(`/api/topics/${topicId}/promote`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workspace: target }),
+    })
+    if (!res.ok) {
+      setToast('切换失败')
+      setTimeout(() => setToast(null), 2000)
+      return
+    }
+    setTopics((ts) =>
+      ts.map((t) => (t.id === topicId ? { ...t, workspace: target } : t))
+    )
+    setToast(target === 'review' ? '已推到客户讨论区' : '已收回到草稿')
+    setTimeout(() => setToast(null), 2000)
   }
 
   const counts = useMemo(() => {
@@ -1082,6 +1154,52 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
     }
     return init
   }, [topics])
+
+  const filteredTopics = useMemo(() => {
+    return topics.filter(
+      (t) =>
+        (t.workspace ?? 'draft') === workspace &&
+        (category === 'all' || t.category === category)
+    )
+  }, [topics, workspace, category])
+
+  // 当前 workspace 下每栏目的数量（用于 chips 上小角标）
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: 0, hot: 0, campaign: 0, product: 0, store: 0 }
+    for (const t of topics) {
+      if ((t.workspace ?? 'draft') !== workspace) continue
+      counts.all++
+      if (t.category) counts[t.category] = (counts[t.category] ?? 0) + 1
+    }
+    return counts
+  }, [topics, workspace])
+
+  // 客户讨论区的数量徽章
+  const reviewCount = useMemo(
+    () => topics.filter((t) => t.workspace === 'review').length,
+    [topics]
+  )
+
+  // 拉到底自动加载（仅草稿区）
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const runGenerateRef = useRef(runGenerate)
+  useEffect(() => {
+    runGenerateRef.current = runGenerate
+  })
+  useEffect(() => {
+    if (workspace !== 'draft') return
+    if (!sentinelRef.current) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return
+        if (autoLoading || generating) return
+        runGenerateRef.current({ limit: 3, silent: true })
+      },
+      { rootMargin: '300px' }
+    )
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [workspace, autoLoading, generating, category, filteredTopics.length])
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -1107,6 +1225,70 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Workspace 切换 */}
+          <div className="px-3 pb-2 flex gap-1.5">
+            {(['draft', 'review'] as const).map((w) => {
+              const active = workspace === w
+              const label = w === 'draft' ? '草稿工作区' : '客户讨论区'
+              const badge = w === 'review' ? reviewCount : 0
+              return (
+                <button
+                  key={w}
+                  type="button"
+                  onClick={() => setWorkspace(w)}
+                  className={`flex-1 h-8 rounded-lg text-[12px] font-semibold transition flex items-center justify-center gap-1.5 ${
+                    active
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}
+                >
+                  <span>{label}</span>
+                  {badge > 0 && (
+                    <span className={`text-[10px] px-1.5 rounded-full ${active ? 'bg-white/20' : 'bg-white text-gray-600'}`}>
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Category chips */}
+          <div className="px-3 pb-2 flex gap-1.5 overflow-x-auto scrollbar-hide">
+            {CATEGORY_TABS.map((c) => {
+              const active = category === c.key
+              const count = categoryCounts[c.key] ?? 0
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => setCategory(c.key)}
+                  className={`flex-shrink-0 h-7 px-3 rounded-full text-[12px] font-medium transition flex items-center gap-1 ${
+                    active
+                      ? 'bg-brand-green text-white'
+                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
+                  }`}
+                >
+                  <span>{c.emoji}</span>
+                  <span>{c.label}</span>
+                  {count > 0 && (
+                    <span className={`text-[10px] tabular-nums ${active ? 'text-white/80' : 'text-gray-400'}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+            <button
+              type="button"
+              disabled
+              title="后续支持自定义栏目"
+              className="flex-shrink-0 h-7 px-3 rounded-full text-[12px] font-medium text-gray-300 border border-dashed border-gray-300"
+            >
+              + 新栏目
+            </button>
           </div>
         </header>
 
@@ -1143,15 +1325,64 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
             </div>
           )}
 
-          {!generating && topics.length === 0 && (
+          {!generating && filteredTopics.length === 0 && (
             <div className="text-center py-20 space-y-3 px-6">
-              <div className="text-5xl">✨</div>
-              <p className="text-gray-500 text-sm">点击右下角「+」生成内容创意</p>
+              <div className="text-5xl">{workspace === 'review' ? '💬' : '✨'}</div>
+              <p className="text-gray-500 text-sm">
+                {workspace === 'review'
+                  ? '客户讨论区还没有创意，去草稿区把选好的「推到客户区」吧'
+                  : category === 'all'
+                  ? '点击右下角「+」用文字触发，或下拉自动生成'
+                  : '当前栏目暂无创意，下拉到底自动生成 3 条'}
+              </p>
             </div>
           )}
 
-          {!generating && topics.length > 0 && (
-            <XhsFeedView topics={topics} campaign={campaign} onOpen={(t) => setDetailTopic(t)} />
+          {!generating && filteredTopics.length > 0 && (
+            <>
+              <XhsFeedView
+                topics={filteredTopics}
+                campaign={campaign}
+                onOpen={(t) => setDetailTopic(t)}
+              />
+              {/* 拉到底自动加载（仅草稿区） */}
+              {workspace === 'draft' && (
+                <>
+                  <div ref={sentinelRef} className="h-px" aria-hidden />
+                  <div className="py-4 flex flex-col items-center gap-2 text-gray-400">
+                    {autoLoading ? (
+                      <>
+                        <div className="flex gap-1">
+                          {[0, 1, 2].map((i) => (
+                            <div
+                              key={i}
+                              className="w-1.5 h-1.5 rounded-full bg-brand-green animate-bounce"
+                              style={{ animationDelay: `${i * 0.15}s` }}
+                            />
+                          ))}
+                        </div>
+                        <p className="text-[11px]">
+                          <TypewriterStages
+                            cursorClassName="bg-brand-green"
+                            stages={[
+                              category === 'all'
+                                ? '正在为你发散更多创意…'
+                                : `正在为「${
+                                    CATEGORY_TABS.find((c) => c.key === category)?.label
+                                  }」栏目生成 3 条…`,
+                              '检索小红书近期同栏目爆款…',
+                              '邀请评委进场…',
+                            ]}
+                          />
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-[11px]">滑到底部自动生成更多 ↓</p>
+                    )}
+                  </div>
+                </>
+              )}
+            </>
           )}
         </main>
 
@@ -1162,11 +1393,12 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
             onClose={() => setDetailTopic(null)}
             onStatusChange={updateStatus}
             onCoverChanged={updateCover}
+            onPromote={promoteTopic}
           />
         )}
 
-        {/* FAB — 内容创作浮动入口，约束在 390 容器右下 */}
-        {!detailTopic && !generating && (
+        {/* FAB — 仅在草稿工作区出现，客户讨论区是只读 review */}
+        {!detailTopic && !generating && workspace === 'draft' && (
           <div className="fixed inset-0 z-40 flex justify-center pointer-events-none">
             <div className="w-full max-w-[390px] relative">
               <button
@@ -1207,16 +1439,19 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                   type="button"
                   onClick={() => {
                     setFabOpen(false)
-                    handleGenerate()
+                    setTextInput('')
+                    setTextOpen(true)
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gradient-to-br from-red-500 to-pink-500 text-white text-left hover:opacity-95 transition"
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 text-white text-left hover:opacity-95 transition"
                 >
                   <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl flex-shrink-0">
-                    ✨
+                    💬
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold">AI 自由生成 5 条</p>
-                    <p className="text-[11px] text-white/80 mt-0.5">基于品牌信息，从 5 个角度发散</p>
+                    <p className="text-sm font-bold">文字触发创意</p>
+                    <p className="text-[11px] text-white/80 mt-0.5">
+                      输入方向/客户原话，AI 据此发散 3 条
+                    </p>
                   </div>
                   <svg className="w-4 h-4 text-white/70 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 5l7 7-7 7" />
@@ -1241,6 +1476,9 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
+                <p className="px-1 pt-1 text-[11px] text-gray-400 leading-relaxed">
+                  💡 想要更多类似创意？拉到底自动生成 3 条
+                </p>
               </div>
             </div>
           </div>
@@ -1251,6 +1489,66 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
           open={inspOpen}
           onClose={() => setInspOpen(false)}
         />
+
+        {/* 文字触发创意输入面板 */}
+        {textOpen && (
+          <div className="fixed inset-0 z-[60] flex items-end justify-center">
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setTextOpen(false)}
+            />
+            <div
+              className="relative w-full max-w-[390px] bg-white rounded-t-3xl shadow-2xl"
+              style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
+            >
+              <div className="flex justify-center pt-2.5 pb-1">
+                <span className="w-9 h-1 rounded-full bg-gray-200" />
+              </div>
+              <div className="px-5 pt-2 pb-3">
+                <h3 className="text-base font-bold text-gray-900">💬 文字触发创意</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  输入方向、客户原话或想要的角度，AI 在
+                  <span className="text-gray-700 font-medium">
+                    「{CATEGORY_TABS.find((c) => c.key === category)?.label}」
+                  </span>
+                  栏目发散 3 条
+                </p>
+              </div>
+              <div className="px-5 pb-4 space-y-3">
+                <textarea
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  rows={4}
+                  placeholder="例：「下周新品鸳鸯拿铁要上线，主打怀旧港风」「想做秋天主题，避开南瓜梗」"
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-brand-green resize-none"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTextOpen(false)}
+                    className="flex-1 h-10 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!textInput.trim()}
+                    onClick={() => {
+                      const seedText = textInput.trim()
+                      if (!seedText) return
+                      setTextOpen(false)
+                      runGenerate({ limit: 3, seedText })
+                    }}
+                    className="flex-1 h-10 rounded-xl bg-brand-green text-white text-sm font-bold hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    生成 3 条
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {toast && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 rounded-lg bg-gray-900 text-white text-xs shadow-xl max-w-[90vw] break-words text-center">
