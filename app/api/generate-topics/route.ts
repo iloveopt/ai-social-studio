@@ -1,6 +1,13 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextRequest } from 'next/server'
 import { claudeComplete } from '@/lib/anthropic-client'
+import {
+  isDemoMode,
+  sampleTopics,
+  demoCoverBucket,
+  demoCoverStoragePath,
+  type MockTopic,
+} from '@/lib/mock-fixtures'
 
 // 生成是真实 Claude 调用 (~10-20s)；评委打分 demo 阶段 mock 即可
 export const maxDuration = 60
@@ -176,8 +183,26 @@ export async function POST(request: NextRequest) {
       0
     )
 
-    // Generate 5 topics（真实 Claude 调用）
-    const rawTopics = await generateTopics({ brand, ip, audience, goal, platforms, tone })
+    // Demo 模式：跳过 Claude 调用，直接从 fixtures 池抽 5 条
+    let rawTopics: RawTopic[]
+    let demoSampled: MockTopic[] = []
+    if (isDemoMode()) {
+      // 模拟 1.5s 算法时间，保留 loading 体验
+      await new Promise((r) => setTimeout(r, 1500))
+      demoSampled = sampleTopics(5)
+      rawTopics = demoSampled.map((t) => ({
+        title: t.title,
+        hook: t.hook,
+        thinking: t.thinking,
+        exec_plan: t.exec_plan,
+        handoff: t.handoff,
+        persona: t.persona,
+        refs: t.refs,
+        tags: t.tags,
+      }))
+    } else {
+      rawTopics = await generateTopics({ brand, ip, audience, goal, platforms, tone })
+    }
 
     // Insert topics + mock evaluations（Demo 阶段评委打分 mock 省一次 Claude）
     const topicIds: string[] = []
@@ -188,6 +213,14 @@ export async function POST(request: NextRequest) {
       const avgScore = evals.length
         ? evals.reduce((sum, e) => sum + (e.score ?? 0), 0) / evals.length
         : 0
+
+      // Demo 模式：从预生成的 demo 封面取 URL
+      let demoCoverUrl: string | null = null
+      if (demoSampled[i]) {
+        const path = demoCoverStoragePath(demoSampled[i].slug)
+        const { data: pub } = supabase.storage.from(demoCoverBucket()).getPublicUrl(path)
+        demoCoverUrl = pub?.publicUrl ? `${pub.publicUrl}?v=${Date.now()}` : null
+      }
 
       const { data: topicData, error: topicError } = await supabase
         .from('topics')
@@ -203,6 +236,7 @@ export async function POST(request: NextRequest) {
           refs: raw.refs,
           status: 'pending',
           ai_avg_score: Math.round(avgScore * 10) / 10,
+          cover_image: demoCoverUrl,
         })
         .select('id')
         .single()

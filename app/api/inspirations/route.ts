@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { NextRequest } from 'next/server'
 import { claudeComplete, type ContentBlock } from '@/lib/anthropic-client'
 import type { InspirationSuggestion } from '@/types'
+import { isDemoMode, sampleInspiration } from '@/lib/mock-fixtures'
 
 const MAX_SIZE = 5 * 1024 * 1024
 
@@ -56,6 +57,29 @@ export async function POST(request: NextRequest) {
     const rawMime = image.type || 'image/jpeg'
     const mime: 'image/jpeg' | 'image/png' = rawMime === 'image/png' ? 'image/png' : 'image/jpeg'
     const dataUri = `data:${mime};base64,${base64}`
+
+    // Demo 模式：跳过 Vision 调用，直接用预备 fixture
+    if (isDemoMode()) {
+      await new Promise((r) => setTimeout(r, 1500))
+      const mock = sampleInspiration()
+      const { data: insertedDemo, error: demoErr } = await supabase
+        .from('inspirations')
+        .insert({
+          campaign_id: campaignId,
+          image_base64: dataUri,
+          analysis: mock.analysis,
+          suggestions: mock.suggestions,
+          status: 'done',
+        })
+        .select('id')
+        .single()
+      if (demoErr) throw new Error(demoErr.message)
+      return Response.json({
+        id: insertedDemo.id,
+        analysis: mock.analysis,
+        suggestions: mock.suggestions,
+      })
+    }
 
     const platforms = Array.isArray(campaign.platforms)
       ? campaign.platforms.join('、')
