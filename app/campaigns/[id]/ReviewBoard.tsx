@@ -747,10 +747,16 @@ function PlanningDrawer({
           {tab === 'refs' && (
             <div className="space-y-3">
               {(topic.refs ?? []).map((ref, i) => (
-                <div key={i} className="p-3 bg-gray-50 rounded-xl">
+                <div key={i} className="p-3 bg-gray-50 rounded-xl space-y-1">
                   <p className="text-sm font-semibold text-gray-900">{ref.brand}</p>
-                  <p className="text-sm text-gray-600 mt-1">{ref.desc}</p>
-                  <p className="text-xs text-brand-green mt-1.5">效果：{ref.result}</p>
+                  <p className="text-sm text-gray-600 leading-relaxed">{ref.desc}</p>
+                  <p className="text-xs text-brand-green">效果：{ref.result}</p>
+                  {ref.why && (
+                    <p className="text-xs text-gray-500 leading-relaxed pt-1 border-t border-gray-200">
+                      <span className="text-gray-400">参考点：</span>
+                      {ref.why}
+                    </p>
+                  )}
                 </div>
               ))}
               {(!topic.refs || topic.refs.length === 0) && (

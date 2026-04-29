@@ -37,6 +37,7 @@ export interface Ref {
   brand: string
   desc: string
   result: string
+  why?: string
 }
 
 export interface Topic {
