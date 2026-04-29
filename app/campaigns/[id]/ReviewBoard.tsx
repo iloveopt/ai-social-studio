@@ -941,6 +941,8 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [fabOpen, setFabOpen] = useState(false)
+  const [inspOpen, setInspOpen] = useState(false)
 
   async function updateStatus(topicId: string, status: string) {
     await fetch(`/api/topics/${topicId}/status`, {
@@ -1012,8 +1014,8 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
           className="flex-shrink-0 sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100"
           style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
-          <div className="px-3 py-2.5 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 min-w-0">
+          <div className="px-3 py-2.5 flex items-center gap-2">
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center text-white font-black text-[13px] flex-shrink-0">
                 S
               </div>
@@ -1025,26 +1027,6 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                   {topics.length} 条选题 · {counts.approved} 通过
                 </p>
               </div>
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <InspirationUploader campaignId={campaign.id} />
-              <button
-                onClick={handleGenerate}
-                disabled={generating}
-                className="h-8 px-3 rounded-full bg-red-500 text-white text-[12px] font-semibold hover:bg-red-600 transition disabled:opacity-60 flex items-center gap-1"
-              >
-                {generating ? (
-                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                ) : (
-                  <>
-                    <span>✨</span>
-                    <span>{topics.length > 0 ? '新增创意' : '生成'}</span>
-                  </>
-                )}
-              </button>
             </div>
           </div>
         </header>
@@ -1074,7 +1056,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
           {!generating && topics.length === 0 && (
             <div className="text-center py-20 space-y-3 px-6">
               <div className="text-5xl">✨</div>
-              <p className="text-gray-500 text-sm">点击「生成」让 AI 为你生成内容创意</p>
+              <p className="text-gray-500 text-sm">点击右下角「+」生成内容创意</p>
             </div>
           )}
 
@@ -1091,6 +1073,93 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
             onStatusChange={updateStatus}
           />
         )}
+
+        {/* FAB — 内容创作浮动入口，约束在 390 容器右下 */}
+        {!detailTopic && !generating && (
+          <div className="fixed inset-0 z-40 flex justify-center pointer-events-none">
+            <div className="w-full max-w-[390px] relative">
+              <button
+                type="button"
+                onClick={() => setFabOpen(true)}
+                aria-label="新增创意"
+                className="pointer-events-auto absolute bottom-6 right-4 w-14 h-14 rounded-full bg-red-500 text-white shadow-[0_8px_24px_rgba(255,36,66,0.4)] hover:bg-red-600 active:scale-95 transition flex items-center justify-center"
+                style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}
+              >
+                <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Action sheet */}
+        {fabOpen && (
+          <div className="fixed inset-0 z-[60] flex items-end justify-center">
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setFabOpen(false)}
+            />
+            <div
+              className="relative w-full max-w-[390px] bg-white rounded-t-3xl shadow-2xl pb-2"
+              style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
+            >
+              <div className="flex justify-center pt-2.5 pb-1">
+                <span className="w-9 h-1 rounded-full bg-gray-200" />
+              </div>
+              <div className="px-5 pt-2 pb-3">
+                <h3 className="text-base font-bold text-gray-900">新增创意</h3>
+                <p className="text-xs text-gray-500 mt-0.5">选择一种生成方式</p>
+              </div>
+              <div className="px-3 pb-3 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFabOpen(false)
+                    handleGenerate()
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gradient-to-br from-red-500 to-pink-500 text-white text-left hover:opacity-95 transition"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl flex-shrink-0">
+                    ✨
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold">AI 自由生成 5 条</p>
+                    <p className="text-[11px] text-white/80 mt-0.5">基于品牌信息，从 5 个角度发散</p>
+                  </div>
+                  <svg className="w-4 h-4 text-white/70 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFabOpen(false)
+                    setInspOpen(true)
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gray-50 hover:bg-gray-100 transition text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+                    📎
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-gray-900">上传截图找灵感</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">仿照已有小红书帖子的风格生成</p>
+                  </div>
+                  <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <InspirationUploader
+          campaignId={campaign.id}
+          open={inspOpen}
+          onClose={() => setInspOpen(false)}
+        />
 
         {toast && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 rounded-lg bg-gray-900 text-white text-xs shadow-xl max-w-[90vw] break-words text-center">

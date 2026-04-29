@@ -14,10 +14,11 @@ const CARD_ACCENTS = [
 
 interface Props {
   campaignId: string
+  open: boolean
+  onClose: () => void
 }
 
-export default function InspirationUploader({ campaignId }: Props) {
-  const [open, setOpen] = useState(false)
+export default function InspirationUploader({ campaignId, open, onClose }: Props) {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -93,23 +94,12 @@ export default function InspirationUploader({ campaignId }: Props) {
   }
 
   function closePanel() {
-    setOpen(false)
+    onClose()
     reset()
   }
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        title="上传小红书截图，AI 帮你生成类似创意"
-        className="flex items-center gap-1.5 px-2.5 h-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition text-xs font-medium"
-        aria-label="上传参考"
-      >
-        <span>📎</span>
-        <span className="hidden sm:inline">上传参考</span>
-      </button>
-
       {open && (
         <div className="fixed inset-0 z-[65] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closePanel} />
@@ -270,11 +260,6 @@ export default function InspirationUploader({ campaignId }: Props) {
         </div>
       )}
 
-      {!open && toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] px-4 py-2 rounded-lg bg-gray-900 text-white text-sm shadow-xl">
-          {toast}
-        </div>
-      )}
     </>
   )
 }
