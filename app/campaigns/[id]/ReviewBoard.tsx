@@ -932,6 +932,42 @@ function XhsFeedView({
 }
 
 /* ---------------------------------------------------------------------
+ * Typewriter — 循环打字机效果，loading 时给"AI 正在思考"的体感
+ * ------------------------------------------------------------------- */
+function TypewriterStages({
+  stages,
+  charDelay = 40,
+  holdMs = 900,
+}: {
+  stages: string[]
+  charDelay?: number
+  holdMs?: number
+}) {
+  const [stageIdx, setStageIdx] = useState(0)
+  const [text, setText] = useState('')
+
+  useEffect(() => {
+    const stage = stages[stageIdx % stages.length]
+    if (text.length < stage.length) {
+      const t = setTimeout(() => setText(stage.slice(0, text.length + 1)), charDelay)
+      return () => clearTimeout(t)
+    }
+    const t = setTimeout(() => {
+      setText('')
+      setStageIdx((i) => i + 1)
+    }, holdMs)
+    return () => clearTimeout(t)
+  }, [text, stageIdx, stages, charDelay, holdMs])
+
+  return (
+    <span>
+      {text}
+      <span className="ml-0.5 inline-block w-[2px] h-[1em] bg-gray-400 align-middle animate-pulse" />
+    </span>
+  )
+}
+
+/* ---------------------------------------------------------------------
  * MAIN REVIEW BOARD
  * ------------------------------------------------------------------- */
 
@@ -1049,7 +1085,18 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                   />
                 ))}
               </div>
-              <p className="text-gray-500 text-sm">AI 正在生成选题和评审打分，请稍候…</p>
+              <p className="text-gray-500 text-sm min-h-[1.5em]">
+                <TypewriterStages
+                  stages={[
+                    '正在分析品牌调性…',
+                    '检索小红书近期爆款选题…',
+                    '提炼 5 个最契合的切入角度…',
+                    '邀请 5 位 AI 评委进场…',
+                    '评委正在写点评…',
+                    '整理打分和理由…',
+                  ]}
+                />
+              </p>
             </div>
           )}
 

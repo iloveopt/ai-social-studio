@@ -187,8 +187,8 @@ export async function POST(request: NextRequest) {
     let rawTopics: RawTopic[]
     let demoSampled: MockTopic[] = []
     if (isDemoMode()) {
-      // 模拟 1.5s 算法时间，保留 loading 体验
-      await new Promise((r) => setTimeout(r, 1500))
+      // 模拟 ~5.5s 算法时间，给打字机阶段文案完整播放空间
+      await new Promise((r) => setTimeout(r, 5500))
       demoSampled = sampleTopics(5)
       rawTopics = demoSampled.map((t) => ({
         title: t.title,
