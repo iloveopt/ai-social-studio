@@ -1,7 +1,8 @@
-import type { InspirationSuggestion } from '@/types'
+import type { InspirationSuggestion, TopicCategory } from '@/types'
 
 export interface MockTopic {
   slug: string
+  category: TopicCategory
   title: string
   hook: string
   thinking: string
@@ -11,6 +12,19 @@ export interface MockTopic {
   refs: { brand: string; desc: string; result: string; why: string }[]
   tags: string[]
 }
+
+export interface CategoryMeta {
+  key: TopicCategory
+  label: string
+  emoji: string
+}
+
+export const CATEGORIES: CategoryMeta[] = [
+  { key: 'hot', label: '热点', emoji: '🔥' },
+  { key: 'campaign', label: '营销活动', emoji: '🎯' },
+  { key: 'product', label: '产品', emoji: '☕' },
+  { key: 'store', label: '门店', emoji: '📍' },
+]
 
 export interface MockInspiration {
   analysis: string
@@ -24,6 +38,7 @@ export interface MockInspiration {
 export const DEMO_TOPICS: MockTopic[] = [
   {
     slug: 'demo-01',
+    category: 'hot',
     title: '工位续命第 12 天｜没有这杯我真的会原地辞职☕',
     hook: '7:30 在地铁口排 5 分钟队，回到工位的人都在看我手里这杯。',
     thinking:
@@ -63,6 +78,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-02',
+    category: 'store',
     title: '上海这 5 家星巴克求你必须去拍📸私心榜',
     hook: '原来同一个绿 logo 差距能这么大，臻选店里居然还有这种？',
     thinking:
@@ -102,6 +118,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-03',
+    category: 'campaign',
     title: '七夕求你别送花了｜送这杯我会原地求婚💚',
     hook: '我点「我」他点「们」，拼起来真的会泪目，已订两杯。',
     thinking:
@@ -141,6 +158,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-04',
+    category: 'store',
     title: '21:00 之后的星巴克｜五个不想回家的人在这里',
     hook: '我以为只有我一个，进门发现连第三张桌子的姐姐都在写代码。',
     thinking:
@@ -180,6 +198,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-05',
+    category: 'product',
     title: '秋天第一杯不是南瓜了｜今年这味我赌它要爆🍂',
     hook: '燕麦 + 热拿铁，谁懂啊，喝完整个人都被熨平了那种感觉。',
     thinking:
@@ -219,6 +238,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-06',
+    category: 'product',
     title: '星巴克隐藏点单 7 招｜店员看到都笑了😂',
     hook: '最近终于学会了第 6 种，喝过的人都默契地不告诉别人。',
     thinking:
@@ -258,6 +278,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-07',
+    category: 'campaign',
     title: '巴适得很！成都限定这杯本地人在疯狂代购📦',
     hook: '上海的朋友在群里嗷嗷叫，求我帮他寄一个，凭啥就只有我们成都？',
     thinking:
@@ -297,6 +318,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-08',
+    category: 'hot',
     title: '下雨天我必点这一杯☔｜玻璃起雾的瞬间真的治愈',
     hook: '外面下大雨我躲进店里，服务员一句「老样子？」我直接想哭了。',
     thinking:
@@ -336,6 +358,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-09',
+    category: 'store',
     title: '今天杯子上写了「别忘记吃饭」｜我直接破防😭',
     hook: '今天的咖啡师姐姐特意给我写的那句话，我拍下来发给所有人看。',
     thinking:
@@ -375,6 +398,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-10',
+    category: 'product',
     title: '我连续吃了一个月星巴克早餐｜真的瘦了 4 斤?',
     hook: '贝果 + 燕麦拿铁 29 块包圆，比楼下早餐车好吃，还省 10 分钟。',
     thinking:
@@ -414,6 +438,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-11',
+    category: 'store',
     title: '周六去星巴克学了手冲｜现在我家这杯比店里还香☕',
     hook: '299 一节课劝你必去，听完才知道我之前在家做的咖啡是什么…',
     thinking:
@@ -453,6 +478,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-12',
+    category: 'campaign',
     title: 'OMG 这个联名我等了 18 年｜女魔头粉丝必冲💚',
     hook: '看见杯子上的那个细节我直接眼泪打转，懂的人都懂这部电影对我的意义。',
     thinking:
@@ -492,6 +518,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-13',
+    category: 'hot',
     title: '学生党大事件📢｜凭学生证半价 我已经冲了三杯',
     hook: '开学季回学校第一件事就是这个，半价那一刻血压都稳了。',
     thinking:
@@ -531,6 +558,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-14',
+    category: 'store',
     title: '把咖啡渣带回家｜我养的多肉一周胖了一圈🌵',
     hook: '门店免费给的咖啡渣套装，比花店买的肥料还猛，以前白扔了。',
     thinking:
@@ -570,6 +598,7 @@ export const DEMO_TOPICS: MockTopic[] = [
   },
   {
     slug: 'demo-15',
+    category: 'store',
     title: '破防了！我家小区门口要开第 3 家星巴克😭',
     hook: '步行 8 分钟范围内有 5 家了… 楼下星巴克密度直接变恐怖。',
     thinking:
@@ -606,6 +635,369 @@ export const DEMO_TOPICS: MockTopic[] = [
       },
     ],
     tags: ['新店', '本地', '密度', '开业'],
+  },
+  // ─── 热点（+3） ───
+  {
+    slug: 'demo-16',
+    category: 'hot',
+    title: '双 11 凌晨抢购党｜没有这杯我撑不到 4 点🌙',
+    hook: '凌晨 2 点购物车又涨价了，多亏这杯把我从崩溃边缘拉回来。',
+    thinking:
+      '切电商大促夜的"陪跑"心智。双 11 / 618 这种全民熬夜节点，咖啡是天然刚需，把品牌定位为"凌晨陪购物的人"。机制是绑定时间敏感节点，做季节性回归记忆。',
+    exec_plan: {
+      format: '短视频 + 图文双开',
+      cta: '你今晚守到了几点？',
+      best_time: '11.10 晚 - 11.11 凌晨',
+      execution: '联合 20 位生活博主在大促夜统一释放"陪购"主题内容。',
+    },
+    handoff: [
+      { step: 'STEP 1', head: '内容选题', body: '锁定大促夜陪购场景', tag: '内容' },
+      { step: 'STEP 2', head: 'KOC 排期', body: '统一时间窗口集中投放', tag: 'KOL' },
+      { step: 'STEP 3', head: '门店物料', body: '夜场限时优惠券', tag: '门店' },
+    ],
+    persona: {
+      primary: '25–35 岁电商重度用户',
+      secondary: '熬夜党',
+      platform: '小红书 / 抖音',
+      cta: '想点一杯',
+    },
+    refs: [
+      {
+        brand: '瑞幸',
+        desc: '双 11 当天上线"凌晨大促陪你"主题杯套 + 全国门店延长营业',
+        result: '当晚相关笔记 12 万+，凌晨时段订单同比 +180%',
+        why: '同样把"大促夜"做成季节性内容资产，本选题陪购场景可复用其杯套 + 延时打法',
+      },
+      {
+        brand: '麦当劳',
+        desc: '"麦麦夜市"在大促夜延长营业并推夜宵套餐',
+        result: '夜场客流大幅提升，#麦麦夜市# 抖音话题播放破亿',
+        why: '验证"绑定特定夜晚 + 限时玩法"的传播效率，本选题节奏可参考',
+      },
+    ],
+    tags: ['双11', '熬夜', '电商', '陪伴'],
+  },
+  {
+    slug: 'demo-17',
+    category: 'hot',
+    title: '春节回家爸妈第一次喝我的星巴克｜表情绝了😂',
+    hook: '老爸：这水什么味的？老妈：5 块钱给我打 10 杯——评论区会笑死。',
+    thinking:
+      '蹭春节返乡话题。年轻人带城市消费习惯回老家这种"代际碰撞"是天然 UGC 富矿，咖啡 vs 茶 / 速溶的代际差异话题度高。机制是绑定一年一度的高情感浓度节点。',
+    exec_plan: {
+      format: 'UGC 互动话题',
+      cta: '让爸妈试一口你最爱那杯，他们怎么说？',
+      best_time: '春节前 7 天 - 初七',
+      execution: '#爸妈第一次喝星巴克# 话题运营 + 头部博主开题。',
+    },
+    handoff: [
+      { step: 'STEP 1', head: '话题策划', body: '锚定代际表达差异', tag: '话题' },
+      { step: 'STEP 2', head: 'KOL 开题', body: '5 位有家庭场景的博主出第一波', tag: 'KOL' },
+      { step: 'STEP 3', head: 'UGC 收集', body: '评论区抽奖 + 优质内容置顶', tag: '运营' },
+    ],
+    persona: {
+      primary: '20–30 岁返乡青年',
+      secondary: '家庭场景内容创作者',
+      platform: '小红书 / 抖音',
+      cta: '想拍一条',
+    },
+    refs: [
+      {
+        brand: '大白兔',
+        desc: '春节"带零食回家"主题，主打代际共享',
+        result: '相关 UGC 笔记 8 万+，春节季销售环比 +35%',
+        why: '同样押"代际共享"话题，本选题父母初体验的笑点结构可对标',
+      },
+      {
+        brand: '可口可乐',
+        desc: '春节"昵称团圆罐"在家庭桌上找名字玩',
+        result: '春节季 UGC 视频量行业第一',
+        why: '验证"家庭场景的 UGC 触发器"，本选题代际差异的内容点更具冲突感',
+      },
+    ],
+    tags: ['春节', '返乡', '代际', 'UGC'],
+  },
+  {
+    slug: 'demo-18',
+    category: 'hot',
+    title: '立秋第一杯不喝就 out 了？｜今年的"秋天梗"我先收藏',
+    hook: '从"秋天的第一杯奶茶"到现在第六年了，今年大家都喝什么？',
+    thinking:
+      '反向用"秋天第一杯"已被玩成熟梗这件事——把节气热点做成"梗的演变史"内容。年轻人对老梗有审美疲劳但喜欢"共同记忆梳理"。机制是借势已有热度做反向洞察。',
+    exec_plan: {
+      format: '长图文 + 互动投票',
+      cta: '今年你的"第一杯"打算给哪杯？',
+      best_time: '立秋当天 - 后 7 天',
+      execution: '梳理 6 年"秋天第一杯"梗的演变 + 当年新品试饮。',
+    },
+    handoff: [
+      { step: 'STEP 1', head: '内容梳理', body: '6 年梗的视觉化时间轴', tag: '内容' },
+      { step: 'STEP 2', head: '互动设计', body: '小红书投票贴推动 UGC', tag: '互动' },
+      { step: 'STEP 3', head: '产品承接', body: '新品燕麦/桂花季节限定上市', tag: '产品' },
+    ],
+    persona: {
+      primary: '23–32 岁节气敏感人群',
+      secondary: '梗文化爱好者',
+      platform: '小红书',
+      cta: '想试新品',
+    },
+    refs: [
+      {
+        brand: '茶颜悦色',
+        desc: '"立秋桂花" 系列结合节气营销 + 限定包装',
+        result: '上线首周相关笔记 6 万+，门店日均订单 +25%',
+        why: '同样押节气节点，本选题可叠加"梗演变史"做更长的内容钩子',
+      },
+      {
+        brand: '元気森林',
+        desc: '"二十四节气特调"系列长期内容计划',
+        result: '节气类内容累计阅读 5 亿+',
+        why: '验证节气作为长期内容母题的可持续性，可作为本选题年度规划参考',
+      },
+    ],
+    tags: ['立秋', '节气', '秋天', '梗'],
+  },
+  // ─── 营销活动（+3） ───
+  {
+    slug: 'demo-19',
+    category: 'campaign',
+    title: '玫瑰 20 周年限定到了😭｜这次包装真的不一样',
+    hook: '20 周年限定杯今天到货 全场只有 5000 个 我直接抢空了同事的午休时间。',
+    thinking:
+      '20 周年是品牌大事件，不只是上一款限定产品，而是借机做品牌资产再激活。把"20 周年"做成稀缺事件 + 老顾客情怀双轨，机制是限量驱动 FOMO + 老用户唤起。',
+    exec_plan: {
+      format: '限定产品 + 老顾客证言短视频',
+      cta: '20 年里你最难忘的那一杯是？',
+      best_time: '周年活动前 7 天到当天',
+      execution: '限定杯全国 5000 套 + 邀请 10 位 5 年以上老顾客拍证言短片。',
+    },
+    handoff: [
+      { step: 'STEP 1', head: '产品设计', body: '限定杯 + 数字证书概念', tag: '产品' },
+      { step: 'STEP 2', head: '人物拍摄', body: '5 年以上老顾客 10 位证言', tag: '内容' },
+      { step: 'STEP 3', head: '稀缺玩法', body: '5000 套全国分配 + 抽签', tag: '运营' },
+    ],
+    persona: {
+      primary: '5 年以上星巴克老顾客',
+      secondary: '品牌情怀向消费者',
+      platform: '小红书 / 微博',
+      cta: '想抽签买',
+    },
+    refs: [
+      {
+        brand: 'Nike',
+        desc: 'Air Max Day 周年事件做成"鞋迷年度大日"',
+        result: '相关笔记/帖子年增长 30%+，限量款二级市场翻倍',
+        why: '同样把品牌周年做成稀缺事件 + 粉丝身份认同，本选题稀缺玩法可参考',
+      },
+      {
+        brand: '茅台',
+        desc: '"生肖纪念酒"年度限量发售 + 老用户优先',
+        result: '每年发售首日全国脱销，社交媒体话题阅读破 5 亿',
+        why: '验证"周年/限量 + 老用户优先"的双重驱动力，本选择老顾客证言路径相通',
+      },
+    ],
+    tags: ['周年', '限定', '稀缺', '情怀'],
+  },
+  {
+    slug: 'demo-20',
+    category: 'campaign',
+    title: '双 11 会员日特调｜星 plus 才能买的隐藏款来了',
+    hook: '只有星 plus 会员能下单 客服小姐姐刚刚悄悄告诉我的——求别让我等。',
+    thinking:
+      '把双 11 大促做成"会员专属"而不是全民促销，反向制造"我有他没有"的优越感。机制是会员身份溢价 + 大促节点的双重叠加，能拉动会员充值。',
+    exec_plan: {
+      format: '会员限定上市 + 客服话术体系',
+      cta: '你今年 11.11 抢到哪一杯？',
+      best_time: '11.1 - 11.11',
+      execution: '上线 1 款仅 plus 会员可购的特调 + 配套客服推送。',
+    },
+    handoff: [
+      { step: 'STEP 1', head: '产品门槛', body: '会员等级权限设计', tag: '运营' },
+      { step: 'STEP 2', head: '内容铺设', body: 'KOC 晒会员身份 + 试喝', tag: 'KOL' },
+      { step: 'STEP 3', head: '会员转化', body: '非会员看到内容触发开卡', tag: '增长' },
+    ],
+    persona: {
+      primary: '星 plus 会员',
+      secondary: '潜在会员转化人群',
+      platform: '小红书 / 微信',
+      cta: '想抢 / 想开会员',
+    },
+    refs: [
+      {
+        brand: 'lululemon',
+        desc: '"会员日"独立于公开促销，只面向认证会员发限定颜色',
+        result: '会员日当天复购峰值，社群"我抢到了"自传播明显',
+        why: '同样以会员身份溢价做活动，本选题在咖啡赛道是空白点',
+      },
+      {
+        brand: 'Costco',
+        desc: '会员限定商品 + 会员专享价心智长期沉淀',
+        result: '会员续费率全球行业第一',
+        why: '验证"会员独享" 是稳固复购最有效的机制，本选题大促节点叠加会员是双倍杠杆',
+      },
+    ],
+    tags: ['双11', '会员', '专属', '溢价'],
+  },
+  {
+    slug: 'demo-21',
+    category: 'campaign',
+    title: '圣诞日历杯今年长这样📅｜每天打开一格小心思',
+    hook: '12.1 第一格是手写卡，12.10 是迷你杯——求你别打开太快好吗。',
+    thinking:
+      '圣诞日历是"每天有期待"的节奏型互动，比一次性限定能产生 25 天的连续内容。把品牌做成 12 月的每日仪式感，机制是节奏型 UGC + 长尾内容产出。',
+    exec_plan: {
+      format: '产品 + 25 天日历互动',
+      cta: '今天的第几格 你打开了什么？',
+      best_time: '12.1 - 12.25',
+      execution: '推出"圣诞日历盒"含 25 个小礼物 + 每天解锁话题互动。',
+    },
+    handoff: [
+      { step: 'STEP 1', head: '产品设计', body: '25 格日历盒，配 25 件不同小物', tag: '产品' },
+      { step: 'STEP 2', head: '日历内容', body: '每天 1 条品牌内容呼应当日礼物', tag: '内容' },
+      { step: 'STEP 3', head: 'UGC 接力', body: '#今天打开了# 接龙话题', tag: '运营' },
+    ],
+    persona: {
+      primary: '20–35 岁节日仪式感人群',
+      secondary: '送礼场景人群',
+      platform: '小红书 / 抖音',
+      cta: '想买给自己 / 送朋友',
+    },
+    refs: [
+      {
+        brand: '高端美妆品牌（Diptyque / Jo Malone 等）',
+        desc: '圣诞倒数日历每年限定，25 天解锁不同试用装',
+        result: '日历单品在节日季常占年度销量 TOP3',
+        why: '同样的"25 天节奏型期待"在咖啡赛道未被开发，本选题可借鉴其内容连载逻辑',
+      },
+      {
+        brand: 'LEGO',
+        desc: '圣诞倒数日历主题套装 + 每天拼一小块',
+        result: '相关 UGC 视频内容连续 25 天日更，节日季话题阅读破 10 亿',
+        why: '验证日历型互动具备"内容自动化输出 25 天"的优势，可作为本选题节奏参考',
+      },
+    ],
+    tags: ['圣诞', '日历', '节日', '仪式感'],
+  },
+  // ─── 产品（+3） ───
+  {
+    slug: 'demo-22',
+    category: 'product',
+    title: '鸳鸯拿铁我先冲了三杯☕☕☕｜原来咖啡可以这样喝',
+    hook: '一半浓缩一半拿铁 喝起来像两种心情来回切换 不夸张 真的好喝。',
+    thinking:
+      '鸳鸯本来是港式茶餐厅的咖啡 + 奶茶混搭，把这种"在地化二合一"做成新品故事——既是产品创新也是文化致敬。机制是"熟悉 + 意外"的甜区，老顾客买情怀，新顾客买好奇。',
+    exec_plan: {
+      format: '产品种草 + 文化背景科普',
+      cta: '你最爱港式还是星式鸳鸯？',
+      best_time: '产品上线前 3 天 - 后 14 天',
+      execution: '联合 5 位港式美食博主 + 5 位咖啡测评博主双线开题。',
+    },
+    handoff: [
+      { step: 'STEP 1', head: '产品上市', body: '常规菜单 + 限定双层杯', tag: '产品' },
+      { step: 'STEP 2', head: '内容矩阵', body: '美食 / 咖啡两类博主双线', tag: 'KOL' },
+      { step: 'STEP 3', head: '文化科普', body: '"鸳鸯"由来短视频', tag: '内容' },
+    ],
+    persona: {
+      primary: '咖啡尝鲜党',
+      secondary: '港式怀旧人群',
+      platform: '小红书 / 抖音',
+      cta: '想试新品',
+    },
+    refs: [
+      {
+        brand: '瑞幸',
+        desc: '"生椰拿铁"用东南亚椰子 + 咖啡的混搭做爆款',
+        result: '上市当年销量破亿，开启品类创新先例',
+        why: '同样以"咖啡 + 在地元素"做单品爆款，本选题鸳鸯打法可参考其上市节奏',
+      },
+      {
+        brand: '太平洋咖啡',
+        desc: '港式系列长期保留菜单 + 系列名"港式风情"',
+        result: '港式系列长期占店内销量 15%+',
+        why: '验证港式元素在咖啡赛道有稳定受众，本选题叙事可借鉴其港味标签',
+      },
+    ],
+    tags: ['鸳鸯', '新品', '港式', '混搭'],
+  },
+  {
+    slug: 'demo-23',
+    category: 'product',
+    title: '小熊杯今天到货了😭｜没抢到的我已经在闲鱼蹲了',
+    hook: '我妈拍了一下午没抢到 然后告诉我闲鱼已经炒到 4 倍了——求复刻。',
+    thinking:
+      '杯具周边是星巴克的核心情感资产，把限量杯当成"城市玩家追逐对象"做营销。机制是稀缺玩具属性 + 二级市场炒作自传播 + 全民可参与的抢购游戏。',
+    exec_plan: {
+      format: '限量发售 + 抢购话题',
+      cta: '你今天抢到了吗？',
+      best_time: '发售前 3 天预热 - 当天',
+      execution: '全国限量 5 万套 + APP 抢购 + 实时更新各城市售罄状态。',
+    },
+    handoff: [
+      { step: 'STEP 1', head: '产品设计', body: '小熊造型 + 5 个限定版本', tag: '产品' },
+      { step: 'STEP 2', head: '抢购系统', body: 'APP 倒计时 + 城市排队地图', tag: '系统' },
+      { step: 'STEP 3', head: '内容收集', body: '#我抢到了 / 没抢到 全民晒图', tag: 'UGC' },
+    ],
+    persona: {
+      primary: '杯具收藏爱好者',
+      secondary: '星巴克老用户',
+      platform: '小红书 / 抖音 / 微博',
+      cta: '想抢 / 想代购',
+    },
+    refs: [
+      {
+        brand: '猫爪杯（早期星巴克自家）',
+        desc: '当年的限量猫爪杯一夜火爆，门店出现排队代购',
+        result: '上架当日全国售罄 + 二级市场炒至 5–10 倍',
+        why: '同品牌过往的成功模板，本选题可直接复用其"造型 + 限量"打法',
+      },
+      {
+        brand: '泡泡玛特',
+        desc: '盲盒限量款养成"抢购 - 隐藏款 - 二级市场" 完整生态',
+        result: '隐藏款单只价格炒至原价 100 倍以上',
+        why: '验证"限量造型 + 抢购游戏"是高粘性玩法，本选题可借鉴其稀缺梯度设计',
+      },
+    ],
+    tags: ['小熊杯', '限量', '抢购', '收藏'],
+  },
+  {
+    slug: 'demo-24',
+    category: 'product',
+    title: '低糖燕麦拿铁来了｜不甜不淡刚刚好🌾',
+    hook: '减糖之后我以为会寡淡 结果第一口直接惊艳——燕麦这次升级是真的认真做了。',
+    thinking:
+      '把减糖做成升级而不是缩水。健康消费趋势里"低糖 = 美味打折"是普遍误解，把"低糖更好喝"做成产品故事，能同时拿下健身党和怕负担的普通用户。机制是健康趋势驱动 + 风味背书。',
+    exec_plan: {
+      format: '产品升级 + 盲测内容',
+      cta: '你能盲测出哪杯是低糖款吗？',
+      best_time: '产品升级周',
+      execution: '联合 10 位健身/咖啡测评博主做盲测视频。',
+    },
+    handoff: [
+      { step: 'STEP 1', head: '产品升级', body: '常规拿铁 + 低糖版双 SKU', tag: '产品' },
+      { step: 'STEP 2', head: '盲测内容', body: '10 条短视频 + 一致评测脚本', tag: '内容' },
+      { step: 'STEP 3', head: '门店推广', body: '默认推荐低糖 + 标签视觉化', tag: '门店' },
+    ],
+    persona: {
+      primary: '健康饮食人群',
+      secondary: '健身党 / 控糖人群',
+      platform: '小红书 / 抖音',
+      cta: '想试新品',
+    },
+    refs: [
+      {
+        brand: '元気森林',
+        desc: '"0 糖 0 卡"心智从功能性饮料切入，覆盖到全品类',
+        result: '0 糖系列年销售破百亿，行业心智第一',
+        why: '验证"健康 + 不寡淡"的双重叙事是有效切入点，本选题低糖打法可借鉴',
+      },
+      {
+        brand: '喜茶',
+        desc: '"少糖 / 0 糖"作为标准选项 + 系列产品默认低糖化',
+        result: '低糖选择占订单比例从 5% 升至 35%+',
+        why: '验证茶咖赛道的"低糖默认"心智正在形成，本选题正好借势',
+      },
+    ],
+    tags: ['低糖', '燕麦拿铁', '健康', '产品升级'],
   },
 ]
 
@@ -703,9 +1095,15 @@ export function demoCoverBucket(): string {
   return COVER_BUCKET
 }
 
-// 从 池中随机抽 n 条不重复
-export function sampleTopics(n: number): MockTopic[] {
-  const pool = [...DEMO_TOPICS]
+// 从池中随机抽 n 条不重复；可选按 category 过滤、排除已有 slugs
+export function sampleTopics(
+  n: number,
+  opts?: { category?: TopicCategory; excludeSlugs?: string[] }
+): MockTopic[] {
+  const exclude = new Set(opts?.excludeSlugs ?? [])
+  const pool = DEMO_TOPICS.filter(
+    (t) => (!opts?.category || t.category === opts.category) && !exclude.has(t.slug)
+  )
   const out: MockTopic[] = []
   for (let i = 0; i < n && pool.length > 0; i++) {
     const idx = Math.floor(Math.random() * pool.length)

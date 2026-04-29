@@ -40,6 +40,9 @@ export interface Ref {
   why?: string
 }
 
+export type TopicCategory = 'hot' | 'campaign' | 'product' | 'store'
+export type TopicWorkspace = 'draft' | 'review'
+
 export interface Topic {
   id: string
   created_at: string
@@ -55,6 +58,8 @@ export interface Topic {
   status: string
   ai_avg_score: number | null
   cover_image: string | null
+  category: TopicCategory | null
+  workspace: TopicWorkspace
   deleted_at: string | null
 }
 

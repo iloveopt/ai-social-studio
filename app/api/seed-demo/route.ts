@@ -317,6 +317,8 @@ export async function POST() {
           refs: t.refs,
           status: t.status,
           ai_avg_score: t.ai_avg_score,
+          category: 'campaign',
+          workspace: 'draft',
         })
         .select('id')
         .single()
