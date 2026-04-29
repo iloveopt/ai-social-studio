@@ -20,9 +20,6 @@ function palette(seq: number) {
   return SEQ_PALETTE[(seq - 1) % SEQ_PALETTE.length]
 }
 
-// 品牌头像统一绿色渐变（呼应 brand-green）
-const BRAND_AVATAR_BG = 'linear-gradient(135deg,#00ae66,#007a4a)'
-
 // Deterministic pseudo-random based on topic id for mock social counts
 function hashStr(s: string): number {
   let h = 0
@@ -311,7 +308,6 @@ function XhsDetailPage({
   const truncated = bodyFull.length > 100
 
   const brandName = campaign.brand_name || '品牌号'
-  const brandInitial = brandName.trim().charAt(0).toUpperCase()
 
   return (
     <div className="fixed inset-0 z-50 flex justify-center bg-gray-100">
@@ -331,12 +327,12 @@ function XhsDetailPage({
             </svg>
           </button>
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-              style={{ backgroundImage: BRAND_AVATAR_BG }}
-            >
-              {brandInitial}
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/starbucks.svg"
+              alt={brandName}
+              className="w-8 h-8 rounded-full flex-shrink-0"
+            />
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-semibold text-gray-900 truncate leading-tight">
                 {brandName}
@@ -811,7 +807,6 @@ function XhsFeedCard({
   const p = palette(topic.seq_num)
   const [liked, setLiked] = useState(false)
   const likes = mockLikes(topic) + (liked ? 1 : 0)
-  const brandInitial = (campaign.brand_name || '·').trim().charAt(0).toUpperCase()
 
   return (
     <button
@@ -880,12 +875,12 @@ function XhsFeedCard({
         {/* Author row */}
         <div className="flex items-center justify-between mt-1.5">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <div
-              className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[9px] font-bold"
-              style={{ backgroundImage: BRAND_AVATAR_BG }}
-            >
-              {brandInitial}
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/starbucks.svg"
+              alt={campaign.brand_name}
+              className="w-5 h-5 rounded-full flex-shrink-0"
+            />
             <span className="text-[12px] text-gray-500 truncate">{campaign.brand_name}</span>
           </div>
           <button
@@ -1026,12 +1021,12 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
         >
           <div className="px-3 py-2.5 flex items-center gap-2">
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white font-black text-[13px] flex-shrink-0"
-                style={{ backgroundImage: BRAND_AVATAR_BG }}
-              >
-                {(campaign.brand_name || 'S').trim().charAt(0).toUpperCase()}
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/starbucks.svg"
+                alt={campaign.brand_name}
+                className="w-7 h-7 rounded-full flex-shrink-0"
+              />
               <div className="min-w-0">
                 <p className="text-[13px] font-bold text-gray-900 leading-tight truncate">
                   {campaign.brand_name}

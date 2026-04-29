@@ -97,7 +97,10 @@ export default function Home() {
             <span className="w-3 h-3 rounded-full bg-brand-blue inline-block" />
           </div>
           <p className="text-sm text-gray-500 tracking-wide">AI Social Studio</p>
-          <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">星巴克</h1>
+          <div className="flex justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/starbucks.svg" alt="星巴克" className="w-24 h-24 sm:w-28 sm:h-28" />
+          </div>
           <p className="text-base text-gray-400 max-w-md mx-auto leading-relaxed">
             内容选题 · 一站式 AI 创意工作台
           </p>
