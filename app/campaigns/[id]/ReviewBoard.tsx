@@ -700,6 +700,7 @@ function XhsDetailPage({
           comments={comments}
           onClose={() => setShowPlanDrawer(false)}
           onStatusChange={onStatusChange}
+          onPromote={onPromote}
         />
       )}
     </div>
@@ -712,11 +713,13 @@ function PlanningDrawer({
   comments,
   onClose,
   onStatusChange,
+  onPromote,
 }: {
   topic: TopicWithEvals
   comments: Comment[]
   onClose: () => void
   onStatusChange: (topicId: string, status: string) => void
+  onPromote: (topicId: string, target: TopicWorkspace) => void
 }) {
   const [tab, setTab] = useState<TabKey>('thinking')
 
