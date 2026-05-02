@@ -761,10 +761,50 @@ function PlanningDrawer({
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {tab === 'thinking' && (
-            topic.thinking ? (
-              <blockquote className="text-sm text-gray-700 leading-relaxed pl-4 border-l-4 border-brand-green bg-brand-green/5 py-3 pr-3 rounded-r-lg whitespace-pre-line">
-                {topic.thinking}
-              </blockquote>
+            (topic.hook || topic.body || topic.thinking || (topic.handoff && topic.handoff.length > 0)) ? (
+              <div className="space-y-5">
+                {topic.hook && (
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">开场钩子</p>
+                    <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">{topic.hook}</p>
+                  </div>
+                )}
+                {topic.body && (
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">正文</p>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{topic.body}</p>
+                  </div>
+                )}
+                {topic.thinking && (
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-semibold text-brand-green uppercase tracking-wider">为什么这样做</p>
+                    <blockquote className="text-sm text-gray-700 leading-relaxed pl-4 border-l-4 border-brand-green bg-brand-green/5 py-3 pr-3 rounded-r-lg whitespace-pre-line">
+                      {topic.thinking}
+                    </blockquote>
+                  </div>
+                )}
+                {topic.handoff && topic.handoff.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">执行节奏</p>
+                    <div className="space-y-2">
+                      {topic.handoff.map((step, i) => (
+                        <div key={i} className="flex gap-3 p-3 bg-gray-50 rounded-xl">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-700">
+                            {step.step}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold text-gray-900">{step.head}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-green/10 text-brand-green">{step.tag}</span>
+                            </div>
+                            <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">{step.body}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <p className="text-sm text-gray-400">暂无</p>
             )
