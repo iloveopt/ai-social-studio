@@ -368,7 +368,7 @@ function XhsDetailPage({
           <div className="flex items-center gap-2 flex-1 min-w-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/starbucks.png"
+              src="/starbucks.svg"
               alt={brandName}
               className="w-8 h-8 rounded-full flex-shrink-0"
             />
@@ -985,7 +985,7 @@ function XhsFeedCard({
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/starbucks.png"
+              src="/starbucks.svg"
               alt={campaign.brand_name}
               className="w-5 h-5 rounded-full flex-shrink-0"
             />
@@ -1218,7 +1218,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/starbucks.png"
+                src="/starbucks.svg"
                 alt={campaign.brand_name}
                 className="w-7 h-7 rounded-full flex-shrink-0"
               />
