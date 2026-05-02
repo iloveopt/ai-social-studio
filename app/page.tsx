@@ -91,12 +91,6 @@ export default function Home() {
     <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex flex-col items-center justify-center px-4 py-10">
       <div className="max-w-2xl w-full text-center space-y-10">
         <div className="space-y-3">
-          <div className="flex justify-center gap-2 mb-6">
-            <span className="w-3 h-3 rounded-full bg-brand-green inline-block" />
-            <span className="w-3 h-3 rounded-full bg-brand-yellow inline-block" />
-            <span className="w-3 h-3 rounded-full bg-brand-blue inline-block" />
-          </div>
-          <p className="text-sm text-gray-500 tracking-wide">AI Social Studio</p>
           <div className="flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/starbucks.svg" alt="星巴克" className="w-24 h-24 sm:w-28 sm:h-28" />
