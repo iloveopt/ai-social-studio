@@ -50,6 +50,7 @@ export interface Topic {
   seq_num: number
   title: string
   hook: string
+  body: string | null
   thinking: string | null
   exec_plan: ExecPlan | null
   handoff: HandoffStep[] | null

@@ -127,6 +127,7 @@ const TOPIC_SYSTEM_PROMPT = `你是一位资深中国社交媒体内容策划总
 interface RawTopic {
   title: string
   hook: string
+  body?: string
   thinking: string
   exec_plan: { format: string; cta: string; best_time: string; execution?: string }
   handoff: { step: string; head: string; body: string; tag: string }[]
@@ -276,6 +277,7 @@ export async function POST(request: NextRequest) {
       rawTopics = demoSampled.map((t) => ({
         title: t.title,
         hook: t.hook,
+        body: t.body,
         thinking: seedText ? `「客户提示」${seedText}\n\n${t.thinking}` : t.thinking,
         exec_plan: t.exec_plan,
         handoff: t.handoff,
@@ -312,6 +314,7 @@ export async function POST(request: NextRequest) {
           seq_num: baseSeq + i + 1,
           title: raw.title,
           hook: raw.hook,
+          body: raw.body ?? null,
           thinking: raw.thinking,
           exec_plan: raw.exec_plan,
           handoff: raw.handoff,

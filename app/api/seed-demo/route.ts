@@ -9,6 +9,7 @@ interface SeedTopic {
   seq_num: number
   title: string
   hook: string
+  body: string
   ai_avg_score: number
   status: 'pending' | 'approved' | 'discussing' | 'rejected'
   thinking: string
@@ -24,6 +25,17 @@ const SEED_TOPICS: SeedTopic[] = [
     seq_num: 1,
     title: '你拿着双杯拿铁冲进去过哪里？',
     hook: 'Andy 上班第一天两手端着咖啡冲进 Runway——这一幕像极了所有打工人的早晨。打卡前那杯星巴克，是入场券也是盔甲。',
+    body: `你拿着双杯拿铁冲进去过哪里？
+
+每次重看《穿 Prada 的女魔头》，Andy 双手端着咖啡冲进 Runway 那一幕都会笑出来——这不就是我每天 9:55 冲进公司的样子吗。
+
+那杯热的是给老板的，凉的是给自己的。打卡机滴一声前那一秒，咖啡是入场券，也是盔甲。
+
+最近星巴克出了 Andy 同款双杯杯托，拿着冲进会议室真的有种"我也是 Runway 一员"的恍惚感。
+
+打卡你的入场拿铁👇 评论区告诉我你冲进了哪里？
+
+#穿Prada的女魔头 #打工人 #咖啡日常 #星巴克 #早高峰`,
     ai_avg_score: 4.8,
     status: 'approved',
     thinking:
@@ -56,6 +68,19 @@ const SEED_TOPICS: SeedTopic[] = [
     seq_num: 2,
     title: '她回来了，你也回来了',
     hook: 'Miranda 时隔 18 年重新出现。第一次看，你是 Andy；再看一次，你终于懂 Miranda 了。那杯咖啡，是她从未改变的仪式感。',
+    body: `她回来了，你也回来了。
+
+18 年前第一次看，我们都是 Andy。被骂、被使唤、连咖啡都端不稳，下班路上委屈得哭。
+
+18 年后续集上线，Miranda 还是那个 Miranda——一杯 skinny latte，一句"That's all"，世界自动让路。
+
+可这一次重看，我居然在她身上看到了自己。原来不知不觉，我们也长成了那个端着咖啡说"今天到此为止"的人。
+
+Miranda 同款 skinny latte 上新了，办公桌上来一杯。
+
+你是今天的 Andy，还是已经成为了 Miranda？
+
+#穿Prada的女魔头2 #职场女性 #成长 #星巴克联名`,
     ai_avg_score: 4.6,
     status: 'approved',
     thinking:
@@ -88,6 +113,17 @@ const SEED_TOPICS: SeedTopic[] = [
     seq_num: 3,
     title: "That's all.",
     hook: 'Miranda 说完这两个字，所有人立刻散去。她不需要解释，不需要等任何人。这杯咖啡在她手里，是结束，也是开始。',
+    body: `That's all.
+
+Miranda 永远只说这两个字。说完，所有人立刻散去——不需要解释，不需要等任何人。
+
+最近开会的时候我学着说了一次。话题僵在那、所有人都在等我表态，我端起咖啡说了句 That's all——居然没人反驳。
+
+气场这种东西原来真的可以练。手里那杯咖啡是底气，是这场会议的句点，也是我自己的开始。
+
+Miranda 同款 skinny latte，在的话给我来一杯。
+
+#穿Prada的女魔头 #ThatsAll #职场气场 #星巴克`,
     ai_avg_score: 4.2,
     status: 'discussing',
     thinking:
@@ -120,6 +156,21 @@ const SEED_TOPICS: SeedTopic[] = [
     seq_num: 4,
     title: '我是 Miranda？Andy？还是 Emily？',
     hook: '三个人，三种选择，三种咖啡。Miranda 喝 skinny latte，Andy 要两杯，Emily 快饿晕了。你是今天哪一个？',
+    body: `我是 Miranda？Andy？还是 Emily？
+
+三个人，三种选择，三种咖啡：
+
+Miranda — skinny latte，永远不甜，永远精准。
+Andy — 双杯标配，自己一杯，老板一杯。
+Emily — 已经一天没吃饭了，但今天先来杯低卡。
+
+测试链接放评论区，10 题告诉你今天是哪一个。测完截图发出来，到店领角色对应饮品的优惠券🎁
+
+我测出来 90% Miranda 10% Emily——准得让人想哭。
+
+你呢？
+
+#穿Prada的女魔头 #人格测试 #星巴克联名 #咖啡选择困难`,
     ai_avg_score: 4.4,
     status: 'pending',
     thinking:
@@ -152,6 +203,21 @@ const SEED_TOPICS: SeedTopic[] = [
     seq_num: 5,
     title: 'Emily 精神，但今天先喝这杯',
     hook: '"我距离目标体重只差一场胃流感。"——Emily，2006。2026年，我们喝低卡拿铁，继续努力，同样帅气。',
+    body: `Emily 精神，但今天先喝这杯。
+
+2006 年的 Emily 说："我距离目标体重只差一场胃流感。"
+2026 年的我们已经知道这种话不太好笑了——但 Emily 那种"我有目标，我会到达"的劲儿还是想留住。
+
+所以今天不饿肚子，喝这杯低卡燕麦拿铁：
+- 75 卡，不到一片吐司
+- 燕麦奶替代全脂，少 60% 脂肪
+- 微甜尾韵，不靠糖支撑
+
+继续努力，同样帅气，但不用饿到第二天起床头晕。
+
+#Emily精神挑战 — 晒你今天的低卡选择，参与抽 7 天免费咖啡✨
+
+#穿Prada的女魔头 #低卡咖啡 #健康打工人 #星巴克新品`,
     ai_avg_score: 4.3,
     status: 'pending',
     thinking:
@@ -410,6 +476,7 @@ export async function POST() {
           seq_num: t.seq_num,
           title: t.title,
           hook: t.hook,
+          body: t.body,
           thinking: t.thinking,
           exec_plan: t.exec_plan,
           handoff: t.handoff,

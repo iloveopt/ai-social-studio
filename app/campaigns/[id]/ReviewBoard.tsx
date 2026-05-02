@@ -344,9 +344,7 @@ function XhsDetailPage({
     }
   }
 
-  const bodyText = (topic.thinking || topic.hook || '').slice(0, 100)
-  const bodyFull = topic.thinking || topic.hook || ''
-  const truncated = bodyFull.length > 100
+  const bodyFull = topic.body || topic.hook || ''
 
   const brandName = campaign.brand_name || '品牌号'
 
@@ -538,16 +536,18 @@ function XhsDetailPage({
               {topic.title}
             </h1>
             <p className="text-[14px] text-gray-800 leading-[1.65] whitespace-pre-line">
-              {bodyText}{truncated && '…'}
+              {bodyFull}
             </p>
 
-            {/* Hashtags */}
-            <div className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[13px] text-[#3d7eff]">
-              <span>#{brandName}</span>
-              {campaign.tone && <span>#{campaign.tone}</span>}
-              <span>#种草</span>
-              <span>#内容营销</span>
-            </div>
+            {/* Hashtags（仅在 body 没有自带 hashtag 时补充品牌标签） */}
+            {!bodyFull.includes('#') && (
+              <div className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[13px] text-[#3d7eff]">
+                <span>#{brandName}</span>
+                {campaign.tone && <span>#{campaign.tone}</span>}
+                <span>#种草</span>
+                <span>#内容营销</span>
+              </div>
+            )}
 
             <button
               onClick={() => setShowPlanDrawer(true)}
