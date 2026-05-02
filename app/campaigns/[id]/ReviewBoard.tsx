@@ -423,7 +423,7 @@ function XhsDetailPage({
                       alt={topic.title}
                       fill
                       priority
-                      sizes="(max-width: 390px) 100vw, 390px"
+                      sizes="(max-width: 640px) 100vw, 390px"
                       className="object-cover"
                     />
                   ) : (
@@ -976,7 +976,7 @@ function XhsFeedCard({
             src={topic.cover_image}
             alt={topic.title}
             fill
-            sizes="(max-width: 390px) 50vw, 195px"
+            sizes="(max-width: 640px) 50vw, 195px"
             className="object-cover"
           />
         ) : (
@@ -1070,12 +1070,12 @@ function XhsFeedView({
 
   return (
     <div className="px-2 pt-2 pb-20 flex gap-2">
-      <div className="flex-1 space-y-3">
+      <div className="flex-1 min-w-0 space-y-3">
         {colA.map((t) => (
           <XhsFeedCard key={t.id} topic={t} campaign={campaign} onOpen={() => onOpen(t)} />
         ))}
       </div>
-      <div className="flex-1 space-y-3">
+      <div className="flex-1 min-w-0 space-y-3">
         {colB.map((t) => (
           <XhsFeedCard key={t.id} topic={t} campaign={campaign} onOpen={() => onOpen(t)} />
         ))}
