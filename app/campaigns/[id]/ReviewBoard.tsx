@@ -350,7 +350,7 @@ function XhsDetailPage({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-center bg-gray-100">
-      <div className="w-full max-w-[390px] h-full bg-white relative shadow-[0_0_24px_rgba(0,0,0,0.08)] flex flex-col">
+      <div className="w-full sm:max-w-[390px] h-full bg-white relative sm:shadow-[0_0_24px_rgba(0,0,0,0.08)] flex flex-col">
         {/* Top bar — 与 feed 顶栏统一样式 */}
         <header
           className="flex-shrink-0 sticky top-0 z-30 flex items-center gap-2 px-3 py-2.5 bg-white/95 backdrop-blur-md border-b border-gray-100"
@@ -729,7 +729,7 @@ function PlanningDrawer({
   return (
     <div className="fixed inset-0 z-[60] flex justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full max-w-[390px] mt-auto bg-white rounded-t-2xl h-[92vh] flex flex-col shadow-2xl">
+      <div className="relative w-full sm:max-w-[390px] mt-auto bg-white rounded-t-2xl h-[92vh] flex flex-col shadow-2xl">
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-gray-200 rounded-full" />
         </div>
@@ -1406,7 +1406,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
         {/* FAB — 仅在草稿工作区出现，客户讨论区是只读 review */}
         {!detailTopic && !generating && workspace === 'draft' && (
           <div className="fixed inset-0 z-40 flex justify-center pointer-events-none">
-            <div className="w-full max-w-[390px] relative">
+            <div className="w-full sm:max-w-[390px] relative">
               <button
                 type="button"
                 onClick={() => setFabOpen(true)}
@@ -1430,7 +1430,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
               onClick={() => setFabOpen(false)}
             />
             <div
-              className="relative w-full max-w-[390px] bg-white rounded-t-3xl shadow-2xl pb-2"
+              className="relative w-full sm:max-w-[390px] bg-white rounded-t-3xl shadow-2xl pb-2"
               style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
             >
               <div className="flex justify-center pt-2.5 pb-1">
@@ -1504,7 +1504,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
               onClick={() => setTextOpen(false)}
             />
             <div
-              className="relative w-full max-w-[390px] bg-white rounded-t-3xl shadow-2xl"
+              className="relative w-full sm:max-w-[390px] bg-white rounded-t-3xl shadow-2xl"
               style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
             >
               <div className="flex justify-center pt-2.5 pb-1">

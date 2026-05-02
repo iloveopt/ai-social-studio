@@ -30,7 +30,7 @@ export default async function CampaignPage({
 
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
-      <div className="w-full max-w-[390px] min-h-screen bg-white relative shadow-[0_0_24px_rgba(0,0,0,0.04)]">
+      <div className="w-full sm:max-w-[390px] min-h-screen bg-white relative sm:shadow-[0_0_24px_rgba(0,0,0,0.04)]">
         <ReviewBoard
           campaign={campaign as Campaign}
           initialTopics={(topics as TopicWithEvals[]) ?? []}
