@@ -13,6 +13,7 @@ import type {
 } from '@/types'
 import InspirationUploader from './InspirationUploader'
 import { TypewriterStages } from './TypewriterStages'
+import SwipeReviewMode from './SwipeReviewMode'
 
 const CATEGORY_TABS: { key: TopicCategory | 'all'; label: string; emoji: string }[] = [
   { key: 'all', label: '全部', emoji: '✨' },
@@ -1101,6 +1102,7 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
   const [workspace, setWorkspace] = useState<TopicWorkspace>('draft')
   const [category, setCategory] = useState<TopicCategory | 'all'>('all')
   const [autoLoading, setAutoLoading] = useState(false)
+  const [swipeOpen, setSwipeOpen] = useState(false)
 
   async function updateStatus(topicId: string, status: string) {
     await fetch(`/api/topics/${topicId}/status`, {
@@ -1226,6 +1228,12 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
     [topics]
   )
 
+  // 速审模式的待审列表：当前 workspace + category + 仅待评审状态
+  const pendingTopics = useMemo(
+    () => filteredTopics.filter((t) => t.status === 'pending'),
+    [filteredTopics]
+  )
+
   // 拉到底自动加载（仅草稿区）
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const runGenerateRef = useRef(runGenerate)
@@ -1271,6 +1279,20 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
                 </p>
               </div>
             </div>
+            {workspace === 'draft' && pendingTopics.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSwipeOpen(true)}
+                className="flex-shrink-0 h-8 px-3 rounded-full bg-gray-900 text-white text-[12px] font-semibold flex items-center gap-1.5 hover:bg-gray-800 active:scale-95 transition"
+                aria-label="进入速审模式"
+              >
+                <span>⚡</span>
+                <span>速审</span>
+                <span className="text-[10px] tabular-nums bg-white/20 rounded-full px-1.5 py-0.5">
+                  {pendingTopics.length}
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Workspace 切换 */}
@@ -1600,6 +1622,15 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 rounded-lg bg-gray-900 text-white text-xs shadow-xl max-w-[90vw] break-words text-center">
             {toast}
           </div>
+        )}
+
+        {swipeOpen && (
+          <SwipeReviewMode
+            topics={pendingTopics}
+            campaign={campaign}
+            onClose={() => setSwipeOpen(false)}
+            onDecision={(id, status) => updateStatus(id, status)}
+          />
         )}
       </div>
     )
