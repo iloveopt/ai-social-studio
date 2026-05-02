@@ -99,7 +99,7 @@ export default function Home() {
           <p className="text-sm text-gray-500 tracking-wide">AI Social Studio</p>
           <div className="flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/starbucks.svg" alt="星巴克" className="w-24 h-24 sm:w-28 sm:h-28" />
+            <img src="/starbucks.png" alt="星巴克" className="w-24 h-24 sm:w-28 sm:h-28" />
           </div>
           <p className="text-base text-gray-500 max-w-md mx-auto leading-relaxed">
             内容选题 · 一站式 AI 创意工作台
