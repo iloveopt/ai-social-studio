@@ -215,41 +215,141 @@ const EVAL_MATRIX: { name: string; desc: string; emoji: string; scores: number[]
   },
 ]
 
-const EVAL_TEXTS: { quote: string; verdict: string }[][] = [
+const EVAL_TEXTS: { quote: string; verdict: string; reasoning: string }[][] = [
   [
-    { quote: '就是我每天早上！', verdict: '强共鸣' },
-    { quote: '情境太精准了', verdict: '高质感' },
-    { quote: '视觉符号经典', verdict: '可复刻' },
-    { quote: '入场仪式感拉满', verdict: '转化友好' },
-    { quote: '爷青回！', verdict: '破圈' },
+    {
+      quote: '就是我每天早上！',
+      verdict: '强共鸣',
+      reasoning: '双杯出场就是打工人版的"她也是这么过来的"，看完直接想给同事递一杯。',
+    },
+    {
+      quote: '情境太精准了',
+      verdict: '高质感',
+      reasoning: '把电影里的强人入场仪式平移到日常职场，调性稳又能落到品牌资产上。',
+    },
+    {
+      quote: '视觉符号经典',
+      verdict: '可复刻',
+      reasoning: '双杯本身就是大片素材，KOL 会自发拍"我冲进的那间"，零脚本压力。',
+    },
+    {
+      quote: '入场仪式感拉满',
+      verdict: '转化友好',
+      reasoning: '从单杯到双杯一句话讲完进阶心智，落点正好扣住经典 IP 镜头，链路顺。',
+    },
+    {
+      quote: '爷青回！',
+      verdict: '破圈',
+      reasoning: '拿着双杯进会议室真的很好笑，我已经想好要怎么在同学群里玩这个梗了。',
+    },
   ],
   [
-    { quote: '看完想再刷一遍电影', verdict: '情感价值' },
-    { quote: '18年跨度太戳人', verdict: '高级感' },
-    { quote: '叙事弧完整', verdict: '品牌向' },
-    { quote: 'Miranda 同款必买', verdict: '购买动机' },
-    { quote: '有点深但我爱', verdict: '口碑向' },
+    {
+      quote: '看完想再刷一遍电影',
+      verdict: '情感价值',
+      reasoning: '短句叙事直接戳中"职场归来感"，看一眼就懂为啥要喝这杯。',
+    },
+    {
+      quote: '18年跨度太戳人',
+      verdict: '高级感',
+      reasoning: '把 18 年跨度收成一句文案不容易，叙事弧能撑住一整波 campaign。',
+    },
+    {
+      quote: '叙事弧完整',
+      verdict: '品牌向',
+      reasoning: '"她回来"+"你回来"双向构图天然适合九宫格，KOL 配图思路明确。',
+    },
+    {
+      quote: 'Miranda 同款必买',
+      verdict: '购买动机',
+      reasoning: '把 IP 续集情怀做成新品引子，节奏稳，没那种硬塞产品的尴尬感。',
+    },
+    {
+      quote: '有点深但我爱',
+      verdict: '口碑向',
+      reasoning: '怀旧但不做作，我虽然没看过原作但这句话也莫名想转发给人。',
+    },
   ],
   [
-    { quote: '气场确实强', verdict: '记忆点' },
-    { quote: 'Miranda 天花板', verdict: '高级' },
-    { quote: '视觉冲击够', verdict: '可传播' },
-    { quote: '离产品有点远', verdict: '偏品牌' },
-    { quote: '不太懂这个梗', verdict: '年轻人慎入' },
+    {
+      quote: '气场确实强',
+      verdict: '记忆点',
+      reasoning: '这句话戳中我每天下班想说一句的心情，意外好用。',
+    },
+    {
+      quote: 'Miranda 天花板',
+      verdict: '高级',
+      reasoning: '极简文案配大牌质感，品牌端能站得住，不会被说"咖啡店玩深度"。',
+    },
+    {
+      quote: '视觉冲击够',
+      verdict: '可传播',
+      reasoning: '留白多、海报型视觉直接出片，KOL 拿过去基本不用改稿。',
+    },
+    {
+      quote: '离产品有点远',
+      verdict: '偏品牌',
+      reasoning: '用一句台词锚定整支 campaign，记忆点强，但要留意承接到产品的节奏。',
+    },
+    {
+      quote: '不太懂这个梗',
+      verdict: '年轻人慎入',
+      reasoning: '经典梗用得好，但我们这代人未必都看过原作，配图要给上下文。',
+    },
   ],
   [
-    { quote: '一定要测一下', verdict: '强裂变' },
-    { quote: '互动性很好', verdict: '社交货币' },
-    { quote: '结果页设计可玩', verdict: '可执行' },
-    { quote: '券核销路径清晰', verdict: '转化强' },
-    { quote: '朋友圈刷屏预定', verdict: '爆款潜质' },
+    {
+      quote: '一定要测一下',
+      verdict: '强裂变',
+      reasoning: '测一下立马转，互动型内容打工人午休最爱，发出来就刷屏。',
+    },
+    {
+      quote: '互动性很好',
+      verdict: '社交货币',
+      reasoning: 'H5 配角色测试，转化路径清晰，券核销链路也讲得清，没卡点。',
+    },
+    {
+      quote: '结果页设计可玩',
+      verdict: '可执行',
+      reasoning: '测试结果页是天然出片素材，KOL 拿到结果直接发，不用想视觉。',
+    },
+    {
+      quote: '券核销路径清晰',
+      verdict: '转化强',
+      reasoning: '互动机制 + 角色绑定 + 券，三件套结构干净，能直接转 GMV。',
+    },
+    {
+      quote: '朋友圈刷屏预定',
+      verdict: '爆款潜质',
+      reasoning: '朋友圈 A 测下午就能刷屏，我们 Z 世代就吃这一套，主动转发率高。',
+    },
   ],
   [
-    { quote: 'Emily 本e', verdict: '梗到位' },
-    { quote: '反转处理得不错', verdict: '安全牌' },
-    { quote: '视觉可玩空间大', verdict: '可复用' },
-    { quote: '健康卖点清晰', verdict: '产品向' },
-    { quote: '有点自嘲但我笑了', verdict: '好感' },
+    {
+      quote: 'Emily 本e',
+      verdict: '梗到位',
+      reasoning: '自嘲句式打工人最熟悉，看着不端着，转发负担也小。',
+    },
+    {
+      quote: '反转处理得不错',
+      verdict: '安全牌',
+      reasoning: '用反讽包装健康卖点，分寸掌握得到位，不会显得品牌端架子大。',
+    },
+    {
+      quote: '视觉可玩空间大',
+      verdict: '可复用',
+      reasoning: 'Emily 的画面已经是 KOL 心中的固定符号，拍摄成本几乎为零。',
+    },
+    {
+      quote: '健康卖点清晰',
+      verdict: '产品向',
+      reasoning: '把"健康新品"借经典反派表达，避免硬推，落点干净。',
+    },
+    {
+      quote: '有点自嘲但我笑了',
+      verdict: '好感',
+      reasoning: '这句话一发我们群里立刻有人续梗，社交属性满，自带二次创作。',
+    },
   ],
 ]
 
@@ -339,6 +439,7 @@ export async function POST() {
         score: judge.scores[i],
         quote: EVAL_TEXTS[i][judgeIdx].quote,
         verdict: EVAL_TEXTS[i][judgeIdx].verdict,
+        reasoning: EVAL_TEXTS[i][judgeIdx].reasoning,
       }))
 
       const { error: evalError } = await supabase.from('ai_evaluations').insert(evalRows)

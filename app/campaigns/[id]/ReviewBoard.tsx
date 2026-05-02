@@ -128,6 +128,9 @@ function EvalCard({ ev }: { ev: AiEvaluation }) {
           </div>
           {ev.persona_desc && <p className="text-xs text-gray-400 mt-0.5">{ev.persona_desc}</p>}
           <p className="text-sm text-gray-700 mt-1.5 italic">&ldquo;{ev.quote}&rdquo;</p>
+          {ev.reasoning && (
+            <p className="text-xs text-gray-600 leading-relaxed mt-1.5">{ev.reasoning}</p>
+          )}
           {ev.verdict && (
             <span className="inline-block mt-1.5 text-xs px-2 py-0.5 bg-white border border-gray-200 rounded-full text-gray-600">
               {ev.verdict}

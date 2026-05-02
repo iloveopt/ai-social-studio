@@ -13,13 +13,28 @@ import type { TopicCategory, TopicWorkspace } from '@/types'
 // 生成是真实 Claude 调用 (~10-20s)；评委打分 demo 阶段 mock 即可
 export const maxDuration = 60
 
-const JUDGES: { name: string; desc: string; emoji: string; quotes: string[]; verdicts: string[] }[] = [
+const JUDGES: {
+  name: string
+  desc: string
+  emoji: string
+  quotes: string[]
+  verdicts: string[]
+  reasonings: string[]
+}[] = [
   {
     name: '小林',
     desc: '25岁·运营打工人',
     emoji: '😤',
     quotes: ['共鸣感拉满', '朋友圈必刷', '打工人狂喜', '太能懂了', '帮我说了'],
     verdicts: ['强推', '共鸣型', '打工人向', '情绪到位', '可落地'],
+    reasonings: [
+      '标题第一秒就把我拉回工位现场，加班党看完直接转给同事的那种。',
+      '情绪到位但没有刻意卖惨，这个尺度拿捏得我服。',
+      '看完已经在脑子里写自己的版本了，复用度真的高。',
+      '我现在缺的就是这种「懂我」的内容，不是高大上的品牌话术。',
+      '痛点找得准，发完不愁互动，评论区会自动炸。',
+      '没有装腔作势，像同事工位飘过来的吐槽，太能 get 了。',
+    ],
   },
   {
     name: '王女士',
@@ -27,6 +42,14 @@ const JUDGES: { name: string; desc: string; emoji: string; quotes: string[]; ver
     emoji: '👩‍💼',
     quotes: ['调性在线', '可品可读', '品牌感够', '口碑可期', '稳中有新意'],
     verdicts: ['品牌向', '安全牌', '口碑型', '质感足', '可放心推'],
+    reasonings: [
+      '调性稳，发出来不会让品牌掉价，老板看了不会皱眉。',
+      '议题选得不偏激，给后续多个 campaign 留了接续空间。',
+      '风险控制到位，没有那种为了流量豁出去的痕迹。',
+      '文案能看出有打磨，不是博主随手发的水平，对得起品牌。',
+      '受众覆盖面够广，目标人群之外的人看了也不会反感。',
+      '这种内容是品牌长期资产，不只是一波流的话题。',
+    ],
   },
   {
     name: 'Mia',
@@ -34,6 +57,14 @@ const JUDGES: { name: string; desc: string; emoji: string; quotes: string[]; ver
     emoji: '🎨',
     quotes: ['画面抓人', '视觉有记忆点', 'KOL 愿意接', '拍着爽', '构图可玩'],
     verdicts: ['视觉型', 'KOL友好', '可延展', '有潜力', '颜值在线'],
+    reasonings: [
+      '拍照画面在我脑里已经有了，构图、光线、道具都能自洽。',
+      '作为 KOL 会主动接，这种内容自带种草溢价，不用硬推。',
+      '视觉记忆点强，发完之后评论区一定有人问"这是哪家"。',
+      '配图思路清晰，不需要再花力气想视觉，省时间。',
+      '颜值在线又不悬浮，能落到日常审美里。',
+      '是 KOL 们梦寐以求的「拍着也开心」型脚本。',
+    ],
   },
   {
     name: '沈浩',
@@ -41,6 +72,14 @@ const JUDGES: { name: string; desc: string; emoji: string; quotes: string[]; ver
     emoji: '👨‍💻',
     quotes: ['战略清晰', '切入精准', '钩子有张力', '执行路径顺', '有复用空间'],
     verdicts: ['战略型', '执行稳', '可复用', '结构好', '思路清'],
+    reasonings: [
+      '切入角度是清晰的策略支点，不是孤立的噱头。',
+      '能看到后续 N 期的延展空间，不是一锤子买卖。',
+      '钩子有张力但没失控，落点和品牌资产对得上。',
+      '执行链路顺，KOL/物料/门店三方需要的东西都讲得清。',
+      '创意密度对，不会让看的人觉得用力过猛或者偷懒。',
+      '思路清，看一眼就知道为什么是这条而不是别的。',
+    ],
   },
   {
     name: 'Lily',
@@ -48,6 +87,14 @@ const JUDGES: { name: string; desc: string; emoji: string; quotes: string[]; ver
     emoji: '🎓',
     quotes: ['Z世代买单', '我会转发', '梗够新', '同学群必炸', '青春共鸣'],
     verdicts: ['裂变强', 'Z世代向', '梗到位', '社交属性足', '年轻化'],
+    reasonings: [
+      '我就是会发这条到同学群的那个人，看完很有梗。',
+      '钩子够新，没有那种"你们这些大人想讨好我们"的尴尬感。',
+      '同学群一发出来，下一节课大家就开始模仿了那种。',
+      '不端着不油腻，难得能看出是用心和我们这代人对话。',
+      '梗到位但不刻意，真实感拉满，会有人主动 cosplay。',
+      '我们 Z 世代主动转发的内容大多长这样，比硬投放有效。',
+    ],
   },
 ]
 
@@ -68,6 +115,7 @@ function mockEvals(topicIndex: number, title: string): RawEval[] {
       score,
       quote: pick(j.quotes, seed + idx),
       verdict: pick(j.verdicts, seed + idx * 3),
+      reasoning: pick(j.reasonings, seed + idx * 5),
     }
   })
 }
@@ -94,6 +142,7 @@ interface RawEval {
   score: number
   quote: string
   verdict: string
+  reasoning: string
 }
 
 function extractJsonArray(content: string): string {
@@ -288,6 +337,7 @@ export async function POST(request: NextRequest) {
         score: e.score,
         quote: e.quote,
         verdict: e.verdict,
+        reasoning: e.reasoning,
       }))
 
       if (evalRows.length > 0) {
