@@ -88,7 +88,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex flex-col items-center justify-center px-4 py-10">
+    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex flex-col items-center justify-center px-4 py-10">
       <div className="max-w-2xl w-full text-center space-y-10">
         <div className="space-y-3">
           <div className="flex justify-center gap-2 mb-6">
@@ -101,18 +101,18 @@ export default function Home() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/starbucks.svg" alt="星巴克" className="w-24 h-24 sm:w-28 sm:h-28" />
           </div>
-          <p className="text-base text-gray-400 max-w-md mx-auto leading-relaxed">
+          <p className="text-base text-gray-500 max-w-md mx-auto leading-relaxed">
             内容选题 · 一站式 AI 创意工作台
           </p>
         </div>
 
         <div className="space-y-3">
-          <p className="text-xs text-gray-500 uppercase tracking-widest">选择平台查看选题</p>
+          <p className="text-xs text-gray-400 uppercase tracking-widest">选择平台查看选题</p>
           <div className="grid gap-3 sm:grid-cols-3">
             {PLATFORMS.map((p) => {
               const content = (
                 <div
-                  className={`relative flex sm:flex-col items-center sm:items-start gap-3 sm:gap-4 p-5 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left ${
+                  className={`relative flex sm:flex-col items-center sm:items-start gap-3 sm:gap-4 p-5 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors text-left shadow-sm ${
                     p.available ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
                   }`}
                 >
@@ -123,9 +123,9 @@ export default function Home() {
                   </div>
                   <div className="flex-1 sm:w-full">
                     <div className="flex items-center gap-2">
-                      <span className="text-white font-semibold text-base">{p.name}</span>
+                      <span className="text-gray-900 font-semibold text-base">{p.name}</span>
                       {!p.available && (
-                        <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-white/10 text-gray-400">
+                        <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-gray-100 text-gray-500">
                           敬请期待
                         </span>
                       )}
@@ -134,7 +134,7 @@ export default function Home() {
                   </div>
                   {p.available && loading && (
                     <svg
-                      className="w-5 h-5 animate-spin text-white absolute top-5 right-5"
+                      className="w-5 h-5 animate-spin text-gray-700 absolute top-5 right-5"
                       fill="none"
                       viewBox="0 0 24 24"
                     >
@@ -182,7 +182,7 @@ export default function Home() {
       </div>
 
       {toast && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-white/10 backdrop-blur text-white text-sm border border-white/10">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-gray-900 text-white text-sm shadow-lg">
           {toast}
         </div>
       )}
