@@ -1,13 +1,20 @@
 import { createServiceClient } from './server'
+import { parseImageDimensions } from '../image-meta'
 
 const BUCKET = 'topic-covers'
 
+export interface UploadedCover {
+  url: string
+  width: number | null
+  height: number | null
+}
+
 // 把 nano-banana 返回的 data URI 上传到 Supabase Storage，
-// 返回 public URL。失败返回 null，调用方自行决定兜底策略。
+// 返回 public URL + 真实宽高（解析失败时宽高为 null）。失败返回 null。
 export async function uploadCoverFromDataUri(
   topicId: string,
   dataUri: string
-): Promise<string | null> {
+): Promise<UploadedCover | null> {
   const match = dataUri.match(/^data:(image\/[a-z0-9+.-]+);base64,(.+)$/i)
   if (!match) {
     console.error('[storage] dataUri 格式不识别', dataUri.slice(0, 80))
@@ -17,6 +24,7 @@ export async function uploadCoverFromDataUri(
   const b64 = match[2]
   const ext = (mime.split('/')[1] ?? 'png').toLowerCase().replace(/[^a-z0-9]/g, '')
   const buffer = Buffer.from(b64, 'base64')
+  const dim = parseImageDimensions(buffer)
 
   const supabase = createServiceClient()
   const path = `${topicId}.${ext}`
@@ -31,5 +39,9 @@ export async function uploadCoverFromDataUri(
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
   // 加 updated 时间戳击穿 CDN/浏览器对 upsert 同一 path 的缓存
-  return `${data.publicUrl}?v=${Date.now()}`
+  return {
+    url: `${data.publicUrl}?v=${Date.now()}`,
+    width: dim?.width ?? null,
+    height: dim?.height ?? null,
+  }
 }

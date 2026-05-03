@@ -47,18 +47,26 @@ export async function POST(
     return Response.json({ error: genErr ?? '生成失败' }, { status: 500 })
   }
 
-  const newUrl = await uploadCoverFromDataUri(id, dataUri)
-  if (!newUrl) {
+  const uploaded = await uploadCoverFromDataUri(id, dataUri)
+  if (!uploaded) {
     return Response.json({ error: '上传失败' }, { status: 500 })
   }
 
   const { error: updErr } = await supabase
     .from('topics')
-    .update({ cover_image: newUrl })
+    .update({
+      cover_image: uploaded.url,
+      cover_width: uploaded.width,
+      cover_height: uploaded.height,
+    })
     .eq('id', id)
   if (updErr) {
     return Response.json({ error: updErr.message }, { status: 500 })
   }
 
-  return Response.json({ cover_image: newUrl })
+  return Response.json({
+    cover_image: uploaded.url,
+    cover_width: uploaded.width,
+    cover_height: uploaded.height,
+  })
 }

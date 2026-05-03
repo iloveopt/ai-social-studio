@@ -59,6 +59,8 @@ export interface Topic {
   status: string
   ai_avg_score: number | null
   cover_image: string | null
+  cover_width: number | null
+  cover_height: number | null
   category: TopicCategory | null
   workspace: TopicWorkspace
   deleted_at: string | null

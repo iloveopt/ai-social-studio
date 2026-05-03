@@ -49,11 +49,18 @@ export async function POST() {
       if (!dataUri) {
         return { seq: t.seq_num, ok: false as const, error: error ?? 'unknown' }
       }
-      const url = await uploadCoverFromDataUri(t.id, dataUri)
-      if (!url) {
+      const uploaded = await uploadCoverFromDataUri(t.id, dataUri)
+      if (!uploaded) {
         return { seq: t.seq_num, ok: false as const, error: 'storage upload failed' }
       }
-      await supabase.from('topics').update({ cover_image: url }).eq('id', t.id)
+      await supabase
+        .from('topics')
+        .update({
+          cover_image: uploaded.url,
+          cover_width: uploaded.width,
+          cover_height: uploaded.height,
+        })
+        .eq('id', t.id)
       return { seq: t.seq_num, ok: true as const }
     })
   )

@@ -35,6 +35,8 @@ create table if not exists topics (
   status text not null default 'pending' check (status in ('pending','approved','discussing','rejected')),
   ai_avg_score numeric(3,1),
   cover_image text,
+  cover_width int,
+  cover_height int,
   deleted_at timestamptz,
   unique(campaign_id, seq_num)
 );

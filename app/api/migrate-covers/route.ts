@@ -25,11 +25,15 @@ export async function POST() {
   const results = await Promise.allSettled(
     topics.map(async (t) => {
       const dataUri = t.cover_image as string
-      const url = await uploadCoverFromDataUri(t.id as string, dataUri)
-      if (!url) return { id: t.id, ok: false as const, error: 'upload failed' }
+      const uploaded = await uploadCoverFromDataUri(t.id as string, dataUri)
+      if (!uploaded) return { id: t.id, ok: false as const, error: 'upload failed' }
       const { error: updErr } = await supabase
         .from('topics')
-        .update({ cover_image: url })
+        .update({
+          cover_image: uploaded.url,
+          cover_width: uploaded.width,
+          cover_height: uploaded.height,
+        })
         .eq('id', t.id)
       if (updErr) return { id: t.id, ok: false as const, error: updErr.message }
       return { id: t.id, ok: true as const }

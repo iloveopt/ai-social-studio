@@ -540,9 +540,16 @@ export async function POST() {
             })
             const { dataUri } = await generateCoverImage(prompt)
             if (!dataUri) return
-            const url = await uploadCoverFromDataUri(row.id, dataUri)
-            if (!url) return
-            await supabase.from('topics').update({ cover_image: url }).eq('id', row.id)
+            const uploaded = await uploadCoverFromDataUri(row.id, dataUri)
+            if (!uploaded) return
+            await supabase
+              .from('topics')
+              .update({
+                cover_image: uploaded.url,
+                cover_width: uploaded.width,
+                cover_height: uploaded.height,
+              })
+              .eq('id', row.id)
           })
         )
       }

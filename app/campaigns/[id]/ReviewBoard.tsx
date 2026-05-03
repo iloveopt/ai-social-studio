@@ -263,7 +263,7 @@ function XhsDetailPage({
   campaign: Campaign
   onClose: () => void
   onStatusChange: (topicId: string, status: string) => void
-  onCoverChanged: (topicId: string, newUrl: string) => void
+  onCoverChanged: (topicId: string, newUrl: string, width: number | null, height: number | null) => void
   onPromote: (topicId: string, target: TopicWorkspace) => void
 }) {
   const comments = useRealtimeComments(topic.id)
@@ -282,7 +282,7 @@ function XhsDetailPage({
       const res = await fetch(`/api/topics/${topic.id}/regenerate-cover`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '生成失败')
-      onCoverChanged(topic.id, data.cover_image)
+      onCoverChanged(topic.id, data.cover_image, data.cover_width ?? null, data.cover_height ?? null)
     } catch (err) {
       setRegenError(err instanceof Error ? err.message : '生成失败')
       setTimeout(() => setRegenError(null), 3000)
@@ -963,13 +963,18 @@ function XhsFeedCard({
       onClick={onOpen}
       className="group block w-full text-left bg-white"
     >
-      {/* Cover — uniform layout regardless of cover_image */}
+      {/* Cover — 真实图按原比例铺，占位/旧数据回退 3:4 */}
       <div
-        className="relative w-full aspect-[3/4] rounded-lg overflow-hidden bg-gray-100"
+        className="relative w-full rounded-lg overflow-hidden bg-gray-100"
         style={
           topic.cover_image
-            ? undefined
-            : { background: `linear-gradient(135deg, ${p.bg} 0%, ${p.accent} 100%)` }
+            ? topic.cover_width && topic.cover_height
+              ? { aspectRatio: `${topic.cover_width} / ${topic.cover_height}` }
+              : { aspectRatio: '3 / 4' }
+            : {
+                aspectRatio: '3 / 4',
+                background: `linear-gradient(135deg, ${p.bg} 0%, ${p.accent} 100%)`,
+              }
         }
       >
         {topic.cover_image ? (
@@ -1115,9 +1120,13 @@ export default function ReviewBoard({ campaign, initialTopics }: Props) {
     )
   }
 
-  function updateCover(topicId: string, newUrl: string) {
+  function updateCover(topicId: string, newUrl: string, width: number | null, height: number | null) {
     setTopics((ts) =>
-      ts.map((t) => (t.id === topicId ? { ...t, cover_image: newUrl } : t))
+      ts.map((t) =>
+        t.id === topicId
+          ? { ...t, cover_image: newUrl, cover_width: width, cover_height: height }
+          : t
+      )
     )
   }
 
